@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - -Wall
+    - -Wextra
+    - -Wunused
+    - -Wno-unused-parameter
+    - -Wno-cast-function-type-mismatch
