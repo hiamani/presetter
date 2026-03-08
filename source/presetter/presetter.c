@@ -1,6 +1,10 @@
 #include "ext.h"
 #include "ext_hashtab.h"
+#include "ext_mess.h"
 #include "ext_obex.h"
+#include "ext_obex_util.h"
+#include "ext_post.h"
+#include "ext_proto.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "math.h"
@@ -132,6 +136,12 @@ typedef struct _presetter {
     void *j_outlet1;
     void *j_outlet2;
 
+    // Attributes
+    t_symbol *j_pattrstorage_name;
+
+    // pattrstorage
+    t_object *j_pattrstorage;
+
     // Slots
     t_hashtab *j_slots;
 
@@ -180,20 +190,30 @@ typedef struct _presetter {
 // Forward Declarations
 // -----------------------------------------------------------------------------
 
+// Init
 t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv);
 void presetter_free(t_presetter *p);
 
+// Attributes
+t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv);
+
+// Messages
+void presetter_loadbang(t_presetter *p, long action);
 void presetter_bang(t_presetter *p);
+void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
+// Pointer events
 void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mouseleave(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 
+// Keyboard events
 long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long modifiers, long textcharacter);
 
+// Drawing
 void presetter_paint(t_presetter *p, t_object *patcherview);
 
 // -----------------------------------------------------------------------------
@@ -221,7 +241,12 @@ void ext_main(void *r) {
 
     jbox_initclass(c, 0);
 
+    // Methods
+
     class_addmethod(c, (method)presetter_bang, "bang", 0);
+    class_addmethod(c, (method)presetter_loadbang, "loadbang", 0);
+
+    class_addmethod(c, (method)presetter_read, "read", A_GIMME, 0);
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
@@ -233,6 +258,12 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_key, "key", A_CANT, 0);
 
     class_addmethod(c, (method)presetter_paint, "paint", A_CANT, 0);
+
+    // Attributes
+    CLASS_ATTR_SYM(c, "pattrstorage", 0, t_presetter, j_pattrstorage_name);
+    CLASS_ATTR_ACCESSORS(c, "pattrstorage", NULL, presetter_set_pattrstorage);
+    CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
+    CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
     CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 100. 100.");
 
@@ -380,6 +411,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         presetter_init_confirm_cancel_button_dim(p);
         p->j_confirm_cancel_button_down = false;
 
+        attr_dictionary_process(p, d);
         jbox_ready(&p->j_box);
     }
 
@@ -436,95 +468,91 @@ void presetter_measure_surface_text(t_presetter *p, char *text, double *outwidth
     jgraphics_surface_destroy(surface);
 }
 
+/* Find pattrstorage */
+
+t_object *presetter_find_pattrstorage(t_presetter *p) {
+    if (p->j_pattrstorage) {
+        return p->j_pattrstorage;
+    }
+
+    if (!p->j_pattrstorage_name || p->j_pattrstorage_name == gensym(""))
+        return NULL;
+
+    t_object *patcher = NULL;
+    object_obex_lookup(p, gensym("#P"), &patcher);
+    if (!patcher)
+        return NULL;
+
+    t_object *box = (t_object *)object_method(
+        patcher,
+        gensym("getnamedbox"),
+        p->j_pattrstorage_name
+    );
+
+    if (box) {
+        t_object *ps = jbox_get_object(box);
+        p->j_pattrstorage = ps;
+        return ps;
+    }
+
+    return NULL;
+}
+
 // -----------------------------------------------------------------------------
-// Callback Methods
+// Attribute Methods
 // -----------------------------------------------------------------------------
 
-void presetter_handle_recall(t_presetter *p, long cell_idx, bool update_status) {
-    t_symbol *slot = presetter_lookup_slot(p, cell_idx);
+t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv) {
+    if (argc && argv) {
+        p->j_pattrstorage_name = atom_getsym(argv);
+        p->j_pattrstorage = NULL; // clear cached pointer
 
-    if (slot) {
-        p->j_selected_cell = cell_idx;
-        snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
-
-        if (update_status) {
-            snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Selected Preset %d", cell_idx);
+        t_object *ps = presetter_find_pattrstorage(p);
+        if (ps) {
+            p->j_pattrstorage = ps;
+            object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
         }
-
-        p->j_status = PRESETTER_IDLE_STATUS;
-
-        t_atom a;
-        atom_setlong(&a, cell_idx);
-        outlet_anything(p->j_outlet1, gensym("recall"), 1, &a);
-
-        jbox_redraw((t_jbox *)p);
-    }
-}
-
-void presetter_handle_store(t_presetter *p, long cell_idx) {
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Stored Preset %d", cell_idx);
-    p->j_status = PRESETTER_IDLE_STATUS;
-
-    t_atom a;
-    atom_setlong(&a, cell_idx);
-    outlet_anything(p->j_outlet1, gensym("store"), 1, &a);
-    outlet_anything(p->j_outlet1, gensym("getslotnamelist"), 0, NULL);
-    outlet_bang(p->j_outlet2);
-
-    jbox_redraw((t_jbox *)p);
-}
-
-void presetter_handle_delete(t_presetter *p, long cell_idx) {
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Deleted Preset %d", cell_idx);
-    p->j_status = PRESETTER_IDLE_STATUS;
-
-    if (p->j_selected_cell == cell_idx) {
-        p->j_preset_name[0] = '\0';
     }
 
-    p->j_selected_cell = -1;
-
-    t_atom a;
-    atom_setlong(&a, cell_idx);
-    outlet_anything(p->j_outlet1, gensym("delete"), 1, &a);
-    outlet_anything(p->j_outlet1, gensym("getslotnamelist"), 0, NULL);
-    outlet_bang(p->j_outlet2);
-    jbox_redraw((t_jbox *)p);
-}
-
-void presetter_handle_rename(t_presetter *p) {
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Renamed Preset %d", p->j_selected_cell);
-    p->j_editing_name = false;
-
-    t_atom args[2];
-    atom_setlong(&args[0], p->j_selected_cell);
-    atom_setsym(&args[1], gensym(p->j_preset_name));
-
-    outlet_anything(p->j_outlet1, gensym("slotname"), 2, args);
-    outlet_anything(p->j_outlet1, gensym("store"), 1, args);
-    outlet_anything(p->j_outlet1, gensym("getslotnamelist"), 0, NULL);
-    outlet_bang(p->j_outlet2);
-
-    jbox_redraw((t_jbox *)p);
+    return MAX_ERR_NONE;
 }
 
 // -----------------------------------------------------------------------------
-// Message methods
+// Message Methods
 // -----------------------------------------------------------------------------
+
+void presetter_loadbang(t_presetter *p, long action) {
+    if (action == 0)
+        return;
+
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (ps) {
+        object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+    }
+}
 
 void presetter_bang(t_presetter *p) {
     long inlet = proxy_getinlet((t_object *)p);
 
-    if (inlet == 0) {
+    if (inlet == 1) {
         post("Bang!");
+    }
+}
+
+void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    long inlet = proxy_getinlet((t_object *)p);
+    if (inlet != 0)
+        return;
+
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (ps) {
+        object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
     }
 }
 
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     long inlet = proxy_getinlet((t_object *)p);
-    if (inlet != 1)
-        return;
-    if (argc < 1)
+    if (inlet != 0)
         return;
 
     if (atom_gettype(argv) == A_LONG && atom_getlong(argv) == 0) {
@@ -562,6 +590,95 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 // Pass through unknown messages silently
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     return;
+}
+
+// -----------------------------------------------------------------------------
+// Callback Methods
+// -----------------------------------------------------------------------------
+
+void presetter_handle_recall(t_presetter *p, long cell_idx, bool update_status) {
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (!ps)
+        return;
+
+    t_symbol *slot = presetter_lookup_slot(p, cell_idx);
+
+    if (slot) {
+        p->j_selected_cell = cell_idx;
+        snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
+
+        if (update_status) {
+            snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Selected Preset %d", cell_idx);
+        }
+
+        p->j_status = PRESETTER_IDLE_STATUS;
+
+        t_atom a;
+        atom_setlong(&a, cell_idx);
+        object_method_typed(ps, gensym("recall"), 1, &a, NULL);
+
+        jbox_redraw((t_jbox *)p);
+    }
+}
+
+void presetter_handle_store(t_presetter *p, long cell_idx) {
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (!ps)
+        return;
+
+    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Stored Preset %d", cell_idx);
+    p->j_status = PRESETTER_IDLE_STATUS;
+
+    t_atom a;
+    atom_setlong(&a, cell_idx);
+    object_method_typed(ps, gensym("store"), 1, &a, NULL);
+    object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+    outlet_bang(p->j_outlet2);
+
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_handle_delete(t_presetter *p, long cell_idx) {
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (!ps)
+        return;
+
+    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Deleted Preset %d", cell_idx);
+    p->j_status = PRESETTER_IDLE_STATUS;
+
+    if (p->j_selected_cell == cell_idx) {
+        p->j_preset_name[0] = '\0';
+    }
+
+    p->j_selected_cell = -1;
+
+    t_atom a;
+    atom_setlong(&a, cell_idx);
+    object_method_typed(ps, gensym("delete"), 1, &a, NULL);
+    object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+    outlet_bang(p->j_outlet2);
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_handle_rename(t_presetter *p) {
+    t_object *ps = presetter_find_pattrstorage(p);
+    if (!ps)
+        return;
+
+    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Renamed Preset %d", p->j_selected_cell);
+    p->j_editing_name = false;
+
+    t_atom args[2];
+    atom_setlong(&args[0], p->j_selected_cell);
+    atom_setsym(&args[1], gensym(p->j_preset_name));
+
+    object_method_typed(ps, gensym("slotname"), 2, args, NULL);
+    object_method_typed(ps, gensym("store"), 1, args, NULL);
+    object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+
+    outlet_bang(p->j_outlet2);
+
+    jbox_redraw((t_jbox *)p);
 }
 
 // -----------------------------------------------------------------------------
