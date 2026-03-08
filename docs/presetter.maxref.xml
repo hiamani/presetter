@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml-stylesheet href="./c74ref.xsl" type="text/xsl"?>
+<c74object name="presetter">
+  <digest>
+    Enhanced preset UI
+  </digest>
+  <description>
+    Access and rename your pattrstorage presets
+  </description>
+
+  <!--INLETS-->
+  <inletlist>
+    <inlet id="0" type="message">
+      <digest>Messages from pattrstorage dumpout</digest>
+    </inlet>
+  </inletlist>
+
+  <!--OUTLETS-->
+  <outletlist>
+    <outlet id="0" type="bang">
+      <digest>Operation (store/rename/delete) complete</digest>
+    </outlet>
+  </outletlist>
+
+  <!--ATTRIBUTES-->
+  <attributelist>
+    <attribute name="pattrstorage" get="1" set="1" type="symbol" size="1" >
+      <digest>Which pattrstorage object to bind to</digest>
+      <description>Use the varname of your pattrstorage object to bind presetter</description>
+    </attribute>
+  </attributelist>
+</c74object>
