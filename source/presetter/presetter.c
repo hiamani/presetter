@@ -3,7 +3,6 @@
 #include "ext_mess.h"
 #include "ext_obex.h"
 #include "ext_obex_util.h"
-#include "ext_post.h"
 #include "ext_proto.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
@@ -129,12 +128,10 @@ typedef struct _presetter {
     t_jbox j_box;
 
     // Inlets
-    void *j_inlet_proxy1;
     long j_inlet_num;
 
     // Outlets
     void *j_outlet1;
-    void *j_outlet2;
 
     // Attributes
     t_symbol *j_pattrstorage_name;
@@ -200,6 +197,8 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
 // Messages
 void presetter_loadbang(t_presetter *p, long action);
 void presetter_bang(t_presetter *p);
+void presetter_assist(t_presetter *x, void *b, long io, long index, char *s);
+
 void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
@@ -245,6 +244,7 @@ void ext_main(void *r) {
 
     class_addmethod(c, (method)presetter_bang, "bang", 0);
     class_addmethod(c, (method)presetter_loadbang, "loadbang", 0);
+    class_addmethod(c, (method)presetter_assist, "assist", A_CANT, 0);
 
     class_addmethod(c, (method)presetter_read, "read", A_GIMME, 0);
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
@@ -265,7 +265,7 @@ void ext_main(void *r) {
     CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
-    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 100. 100.");
+    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 255. 153.");
 
     class_register(CLASS_BOX, c);
     s_presetter_class = c;
@@ -370,10 +370,8 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         // Inlets
         p->j_box.b_firstin = (t_object *)p;
-        p->j_inlet_proxy1 = proxy_new((t_object *)p, 1, &p->j_inlet_num);
 
         // Outlets
-        p->j_outlet2 = outlet_new((t_object *)p, NULL);
         p->j_outlet1 = outlet_new((t_object *)p, NULL);
 
         // Slots
@@ -517,6 +515,21 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
     return MAX_ERR_NONE;
 }
 
+void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
+    switch (io) {
+    case 1:
+        switch (index) {
+        case 0:
+            strncpy_zero(s, "Receive pattrstorage messages", 512);
+            break;
+        }
+        break;
+    case 2:
+        strncpy_zero(s, "Bang when operation completed", 512);
+        break;
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Message Methods
 // -----------------------------------------------------------------------------
@@ -533,9 +546,11 @@ void presetter_loadbang(t_presetter *p, long action) {
 
 void presetter_bang(t_presetter *p) {
     long inlet = proxy_getinlet((t_object *)p);
+    if (inlet != 0)
+        return;
 
-    if (inlet == 1) {
-        post("Bang!");
+    if (p->j_pattrstorage) {
+        object_method_typed(p->j_pattrstorage, gensym("getslotnamelist"), 0, NULL, NULL);
     }
 }
 
@@ -633,7 +648,7 @@ void presetter_handle_store(t_presetter *p, long cell_idx) {
     atom_setlong(&a, cell_idx);
     object_method_typed(ps, gensym("store"), 1, &a, NULL);
     object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
-    outlet_bang(p->j_outlet2);
+    outlet_bang(p->j_outlet1);
 
     jbox_redraw((t_jbox *)p);
 }
@@ -656,7 +671,7 @@ void presetter_handle_delete(t_presetter *p, long cell_idx) {
     atom_setlong(&a, cell_idx);
     object_method_typed(ps, gensym("delete"), 1, &a, NULL);
     object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
-    outlet_bang(p->j_outlet2);
+    outlet_bang(p->j_outlet1);
     jbox_redraw((t_jbox *)p);
 }
 
@@ -676,7 +691,7 @@ void presetter_handle_rename(t_presetter *p) {
     object_method_typed(ps, gensym("store"), 1, args, NULL);
     object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
 
-    outlet_bang(p->j_outlet2);
+    outlet_bang(p->j_outlet1);
 
     jbox_redraw((t_jbox *)p);
 }
