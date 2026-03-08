@@ -207,13 +207,15 @@ static t_class *s_presetter_class = NULL;
 void ext_main(void *r) {
     t_class *c;
 
-    c = class_new("presetter",
-                  (method)presetter_new,
-                  (method)presetter_free,
-                  sizeof(t_presetter),
-                  (method)NULL,
-                  A_GIMME,
-                  0);
+    c = class_new(
+        "presetter",
+        (method)presetter_new,
+        (method)presetter_free,
+        sizeof(t_presetter),
+        (method)NULL,
+        A_GIMME,
+        0
+    );
 
     c->c_flags |= CLASS_FLAG_NEWDICTIONARY;
 
@@ -285,9 +287,7 @@ void presetter_init_preset_name_dim(t_presetter *p) {
 }
 
 void presetter_init_write_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(p, WRITE_BUTTON_TEXT,
-                                  &p->j_write_button_width,
-                                  &p->j_write_button_height);
+    presetter_get_init_button_dim(p, WRITE_BUTTON_TEXT, &p->j_write_button_width, &p->j_write_button_height);
 }
 
 void presetter_init_status_dim(t_presetter *p) {
@@ -306,15 +306,19 @@ void presetter_init_status_dim(t_presetter *p) {
 }
 
 void presetter_init_confirm_ok_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(p, CONFIRM_OK_BUTTON_TEXT,
-                                  &p->j_confirm_ok_button_width,
-                                  &p->j_confirm_ok_button_height);
+    presetter_get_init_button_dim(
+        p, CONFIRM_OK_BUTTON_TEXT,
+        &p->j_confirm_ok_button_width,
+        &p->j_confirm_ok_button_height
+    );
 }
 
 void presetter_init_confirm_cancel_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(p, CONFIRM_CANCEL_BUTTON_TEXT,
-                                  &p->j_confirm_cancel_button_width,
-                                  &p->j_confirm_cancel_button_height);
+    presetter_get_init_button_dim(
+        p, CONFIRM_CANCEL_BUTTON_TEXT,
+        &p->j_confirm_cancel_button_width,
+        &p->j_confirm_cancel_button_height
+    );
 }
 
 /* Jbox Init */
@@ -871,11 +875,13 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         if (name && name != gensym("<(unnamed)>")) {
             snprintf_zero(
                 p->j_hover_status_text, sizeof(p->j_hover_status_text),
-                "Preset %d: %s", p->j_hovered_cell, name->s_name);
+                "Preset %d: %s", p->j_hovered_cell, name->s_name
+            );
         } else {
             snprintf_zero(
                 p->j_hover_status_text, sizeof(p->j_hover_status_text),
-                "Preset %d", p->j_hovered_cell);
+                "Preset %d", p->j_hovered_cell
+            );
         }
 
         if (p->j_status == PRESETTER_HOVER_STATUS || p->j_hovered_cell != p->j_last_hovered_cell) {
