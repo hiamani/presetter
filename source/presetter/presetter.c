@@ -971,9 +971,9 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         long cell_idx = pos.x + dim.columns * pos.y + 1;
 
         if (modifiers & eLeftButton &&
+            (modifiers & eAltKey) &&
             (modifiers & eShiftKey) &&
-            ((modifiers & eCommandKey) || (modifiers & eControlKey)) &&
-            !(modifiers & eAltKey)) {
+            !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
             p->j_editing_name = false;
             p->j_confirm_delete = true;
             p->j_confirm_cell = cell_idx;
