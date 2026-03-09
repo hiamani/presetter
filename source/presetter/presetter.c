@@ -555,7 +555,6 @@ void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
 
 t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data) {
     if (sender == p->j_pattrstorage && msg == gensym("slot_modified")) {
-        post("pattrstorage: %s %s", s->s_name, msg->s_name);
         object_method_typed(sender, gensym("getslotnamelist"), 0, NULL, NULL);
     }
 
