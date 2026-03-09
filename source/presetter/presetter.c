@@ -721,9 +721,8 @@ void presetter_handle_delete(t_presetter *p, long cell_idx) {
 
     if (p->j_selected_cell == cell_idx) {
         p->j_preset_name[0] = '\0';
+        p->j_selected_cell = -1;
     }
-
-    p->j_selected_cell = -1;
 
     t_atom a;
     atom_setlong(&a, cell_idx);
