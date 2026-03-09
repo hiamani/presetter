@@ -3,6 +3,7 @@
 #include "ext_mess.h"
 #include "ext_obex.h"
 #include "ext_obex_util.h"
+#include "ext_post.h"
 #include "ext_proto.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
@@ -200,6 +201,7 @@ void presetter_bang(t_presetter *p);
 void presetter_assist(t_presetter *x, void *b, long io, long index, char *s);
 
 void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
@@ -214,6 +216,22 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 
 // Drawing
 void presetter_paint(t_presetter *p, t_object *patcherview);
+
+// EXPIRIMENTAL: Try to use pattrstorage notifications to update internal state.
+t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data) {
+
+    // if (sender == p->j_pattrstorage) {
+    //     post("pattrstorage: %s %s", s->s_name, msg->s_name);
+    //     t_messlist *m = p->j_pattrstorage->o_messlist;
+    //     int i = 0;
+    //     while (m[i].m_sym) {
+    //         post("method %d: %s", i, m[i].m_sym->s_name);
+    //         i++;
+    //     }
+    // }
+
+    return jbox_notify((t_jbox *)p, s, msg, sender, data);
+}
 
 // -----------------------------------------------------------------------------
 // Main entry
@@ -245,8 +263,10 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_bang, "bang", 0);
     class_addmethod(c, (method)presetter_loadbang, "loadbang", 0);
     class_addmethod(c, (method)presetter_assist, "assist", A_CANT, 0);
+    class_addmethod(c, (method)presetter_notify, "notify", A_CANT, 0);
 
     class_addmethod(c, (method)presetter_read, "read", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_recall, "recall", A_GIMME, 0);
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
@@ -470,7 +490,13 @@ void presetter_measure_surface_text(t_presetter *p, char *text, double *outwidth
 
 t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (p->j_pattrstorage) {
-        return p->j_pattrstorage;
+        t_symbol *ns = NULL;
+        t_symbol *name = NULL;
+        object_findregisteredbyptr(&ns, &name, p->j_pattrstorage);
+        if (ns && name) {
+            object_detach(ns, name, (t_object *)p);
+        }
+        p->j_pattrstorage = NULL;
     }
 
     if (!p->j_pattrstorage_name || p->j_pattrstorage_name == gensym(""))
@@ -490,6 +516,15 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (box) {
         t_object *ps = jbox_get_object(box);
         p->j_pattrstorage = ps;
+
+        // Attach using its actual registration info
+        t_symbol *ns = NULL;
+        t_symbol *name = NULL;
+        object_findregisteredbyptr(&ns, &name, ps);
+        if (ns && name) {
+            object_attach(ns, name, (t_object *)p);
+        }
+
         return ps;
     }
 
@@ -565,6 +600,30 @@ void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     }
 }
 
+void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    long inlet = proxy_getinlet((t_object *)p);
+    if (inlet != 0 || argc != 1 || atom_gettype(argv) != A_LONG)
+        return;
+
+    long cell_idx = atom_getlong(argv);
+    t_symbol *slot = presetter_lookup_slot(p, cell_idx);
+
+    if (slot) {
+        p->j_selected_cell = cell_idx;
+        snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
+
+        snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Selected Preset %d", cell_idx);
+
+        p->j_status = PRESETTER_IDLE_STATUS;
+
+        t_atom a;
+        atom_setlong(&a, cell_idx);
+
+        jbox_redraw((t_jbox *)p);
+    }
+    return;
+}
+
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     long inlet = proxy_getinlet((t_object *)p);
     if (inlet != 0)
@@ -604,6 +663,7 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 
 // Pass through unknown messages silently
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    // post("%s", s->s_name);
     return;
 }
 
