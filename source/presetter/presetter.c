@@ -199,6 +199,7 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
 void presetter_loadbang(t_presetter *p, long action);
 void presetter_bang(t_presetter *p);
 void presetter_assist(t_presetter *x, void *b, long io, long index, char *s);
+t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data);
 
 void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
@@ -216,22 +217,6 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 
 // Drawing
 void presetter_paint(t_presetter *p, t_object *patcherview);
-
-// EXPIRIMENTAL: Try to use pattrstorage notifications to update internal state.
-t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data) {
-
-    // if (sender == p->j_pattrstorage) {
-    //     post("pattrstorage: %s %s", s->s_name, msg->s_name);
-    //     t_messlist *m = p->j_pattrstorage->o_messlist;
-    //     int i = 0;
-    //     while (m[i].m_sym) {
-    //         post("method %d: %s", i, m[i].m_sym->s_name);
-    //         i++;
-    //     }
-    // }
-
-    return jbox_notify((t_jbox *)p, s, msg, sender, data);
-}
 
 // -----------------------------------------------------------------------------
 // Main entry
@@ -563,6 +548,19 @@ void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
         strncpy_zero(s, "Bang when operation completed", 512);
         break;
     }
+}
+
+// -----------------------------------------------------------------------------
+// Notify
+// -----------------------------------------------------------------------------
+
+t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data) {
+    if (sender == p->j_pattrstorage && msg == gensym("slot_modified")) {
+        post("pattrstorage: %s %s", s->s_name, msg->s_name);
+        object_method_typed(sender, gensym("getslotnamelist"), 0, NULL, NULL);
+    }
+
+    return jbox_notify((t_jbox *)p, s, msg, sender, data);
 }
 
 // -----------------------------------------------------------------------------
