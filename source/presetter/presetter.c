@@ -635,6 +635,8 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         jbox_redraw((t_jbox *)p);
         if (!presetter_lookup_slot(p, p->j_selected_cell)) {
             p->j_selected_cell = -1;
+            p->j_preset_name[0] = '\0';
+            p->j_status = PRESETTER_NO_STATUS;
         }
         return;
     }
