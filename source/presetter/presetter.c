@@ -3,7 +3,6 @@
 #include "ext_mess.h"
 #include "ext_obex.h"
 #include "ext_obex_util.h"
-#include "ext_post.h"
 #include "ext_proto.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
