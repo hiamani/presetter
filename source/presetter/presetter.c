@@ -423,6 +423,9 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 void presetter_free(t_presetter *p) {
     hashtab_clear(p->j_slots);
     jbox_free((t_jbox *)p);
+    if (p->j_pattrstorage) {
+        object_detach_byptr(p, p->j_pattrstorage);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -474,12 +477,7 @@ void presetter_measure_surface_text(t_presetter *p, char *text, double *outwidth
 
 t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (p->j_pattrstorage) {
-        t_symbol *ns = NULL;
-        t_symbol *name = NULL;
-        object_findregisteredbyptr(&ns, &name, p->j_pattrstorage);
-        if (ns && name) {
-            object_detach(ns, name, (t_object *)p);
-        }
+        object_detach_byptr(p, p->j_pattrstorage);
         p->j_pattrstorage = NULL;
     }
 
@@ -500,15 +498,7 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (box) {
         t_object *ps = jbox_get_object(box);
         p->j_pattrstorage = ps;
-
-        // Attach using its actual registration info
-        t_symbol *ns = NULL;
-        t_symbol *name = NULL;
-        object_findregisteredbyptr(&ns, &name, ps);
-        if (ns && name) {
-            object_attach(ns, name, (t_object *)p);
-        }
-
+        object_attach_byptr(p, p->j_pattrstorage);
         return ps;
     }
 
@@ -522,7 +512,7 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
 t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv) {
     if (argc && argv) {
         p->j_pattrstorage_name = atom_getsym(argv);
-        p->j_pattrstorage = NULL; // clear cached pointer
+        p->j_pattrstorage = NULL;
 
         t_object *ps = presetter_find_pattrstorage(p);
         if (ps) {
