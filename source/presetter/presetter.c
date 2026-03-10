@@ -49,7 +49,12 @@
 #define CONFIRM_BUTTON_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
 #define CONFIRM_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
 
-/* Dimensions */
+// Pagination
+#define PAGINATION_ARROW_OFF_COLOR_HEX "#444444"
+#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
+#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+
+/* Dimensions & Text */
 
 // Grid
 #define GRID_OFFSET_X 5
@@ -97,9 +102,6 @@
 #define PAGINATION_ARROW_FONT "Menlo"
 #define PAGINATION_ARROW_FONT_SIZE 13
 #define PAGINATION_ARROW_PADDING 3
-#define PAGINATION_ARROW_OFF_COLOR_HEX "#333333"
-#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
-#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -186,6 +188,8 @@ typedef struct _presetter {
 
     // Pagination
     long j_pagination_number;
+    bool j_pagination_left_arrow_down;
+    bool j_pagination_right_arrow_down;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -349,6 +353,8 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         // Pagination
         p->j_pagination_number = 1;
+        p->j_pagination_left_arrow_down = false;
+        p->j_pagination_right_arrow_down = false;
 
         attr_dictionary_process(p, d);
         jbox_ready(&p->j_box);
@@ -1053,13 +1059,13 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     }
 
     if (presetter_in_right_arrow_bounds(p, &rect, &pt)) {
-        p->j_pagination_number = p->j_pagination_number + 1;
+        p->j_pagination_right_arrow_down = true;
         jbox_redraw((t_jbox *)p);
         return;
     }
 
     if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_pagination_number > 1) {
-        p->j_pagination_number = p->j_pagination_number - 1;
+        p->j_pagination_left_arrow_down = true;
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1086,6 +1092,20 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
 
     if (p->j_confirm_cancel_button_down) {
         presetter_clear_confirm(p);
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_pagination_right_arrow_down) {
+        p->j_pagination_right_arrow_down = false;
+        p->j_pagination_number = p->j_pagination_number + 1;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_pagination_left_arrow_down) {
+        p->j_pagination_left_arrow_down = false;
+        p->j_pagination_number = p->j_pagination_number - 1;
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1518,7 +1538,12 @@ void presetter_draw_right_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_right_arrow_bounds(p, rect);
 
     t_jrgba color;
-    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    if (p->j_pagination_right_arrow_down) {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
+    } else {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    }
+
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_select_font_face(g, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(g, PAGINATION_ARROW_FONT_SIZE);
@@ -1549,7 +1574,14 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_left_arrow_bounds(p, rect);
 
     t_jrgba color;
-    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    if (p->j_pagination_left_arrow_down) {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
+    } else if (p->j_pagination_number > 1) {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    } else {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_OFF_COLOR_HEX, 1);
+    }
+
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_select_font_face(g, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(g, PAGINATION_ARROW_FONT_SIZE);
