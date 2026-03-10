@@ -1,13 +1,5 @@
 #include "ext.h"
-#include "ext_hashtab.h"
-#include "ext_mess.h"
-#include "ext_obex.h"
-#include "ext_obex_util.h"
-#include "ext_proto.h"
 #include "jgraphics.h"
-#include "jpatcher_api.h"
-#include "math.h"
-#include <string.h>
 
 // -----------------------------------------------------------------------------
 // Constants
