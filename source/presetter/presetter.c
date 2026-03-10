@@ -62,8 +62,10 @@
 #define PRESET_NAME_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
 #define PRESET_NAME_OFFSET_Y 9
 #define PRESET_NAME_MARGIN_RIGHT 4
+#define PRESET_NAME_FONT_SIZE 10
 
 // Buttons
+#define BUTTON_FONT_SIZE 9
 #define BUTTON_PADDING_X 4
 #define BUTTON_PADDING_Y 1
 
@@ -73,8 +75,10 @@
 #define WRITE_BUTTON_OFFSET_Y 8
 
 // Status
+#define STATUS_FONT_SIZE 9
 #define STATUS_OFFSET_X 8
 #define STATUS_OFFSET_Y 4
+#define STATUS_PADDING_RIGHT 2
 
 // Confirm
 #define CONFIRM_OK_BUTTON_TEXT "OK"
@@ -82,6 +86,20 @@
 #define CONFIRM_CANCEL_BUTTON_TEXT "CANCEL"
 #define CONFIRM_CANCEL_BUTTON_MARGIN_LEFT 8
 #define CONFIRM_BUTTON_OFFSET_Y 5
+
+// Pagination
+#define PAGINATION_MARGIN_TOP 0
+#define PAGINATION_MARGIN_RIGHT 9
+#define PAGINATION_NUMBER_FONT "Arial"
+#define PAGINATION_NUMBER_FONT_SIZE 10
+#define PAGINATION_LEFT_ARROW_TEXT "←"
+#define PAGINATION_RIGHT_ARROW_TEXT "→"
+#define PAGINATION_ARROW_FONT "Menlo"
+#define PAGINATION_ARROW_FONT_SIZE 13
+#define PAGINATION_ARROW_PADDING 3
+#define PAGINATION_ARROW_OFF_COLOR_HEX "#333333"
+#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
+#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -134,6 +152,10 @@ typedef struct _presetter {
     // Slots
     t_hashtab *j_slots;
 
+    // jgraphics
+    t_jsurface *surface;
+    t_jgraphics *offscreen;
+
     // Cells
     long j_hovered_cell;
     long j_last_hovered_cell;
@@ -142,14 +164,9 @@ typedef struct _presetter {
     // Preset Name
     bool j_editing_name;
     char j_preset_name[512];
-    long j_preset_name_font_size;
-    double j_preset_name_height;
 
     // Write Button
     char *j_write_button_text;
-    long j_button_font_size;
-    double j_write_button_width;
-    double j_write_button_height;
     bool j_write_button_down;
 
     // Status line
@@ -158,21 +175,17 @@ typedef struct _presetter {
     char j_idle_status_text[512];
     char j_hover_status_text[1024];
     char j_confirm_status_text[512];
-    long j_status_font_size;
     double j_status_height;
 
     // Confirm
     long j_confirm_cell;
     bool j_confirm_store;
     bool j_confirm_delete;
-
-    double j_confirm_ok_button_width;
-    double j_confirm_ok_button_height;
     bool j_confirm_ok_button_down;
-
-    double j_confirm_cancel_button_width;
-    double j_confirm_cancel_button_height;
     bool j_confirm_cancel_button_down;
+
+    // Pagination
+    long j_pagination_number;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -271,81 +284,15 @@ void ext_main(void *r) {
 // Lifecycle methods
 // -----------------------------------------------------------------------------
 
-/* Element Measurements */
-
-// Generic Button Dimensions
-
-void presetter_get_init_button_dim(t_presetter *p, char *text, double *outwidth, double *outheight) {
-    t_jsurface *surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
-    t_jgraphics *g = jgraphics_create(surface);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_button_font_size);
-
-    double text_width;
-    double text_height;
-    jgraphics_text_measure(g, text, &text_width, &text_height);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    *outwidth = text_width + BUTTON_PADDING_X * 2;
-    *outheight = extents.ascent + extents.descent + BUTTON_PADDING_Y * 2;
-
-    jgraphics_destroy(g);
-    jgraphics_surface_destroy(surface);
-}
-
-// Dimension Definitions
-
-void presetter_init_preset_name_dim(t_presetter *p) {
-    t_jsurface *surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
-    t_jgraphics *g = jgraphics_create(surface);
-
-    jgraphics_select_font_face(g, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_preset_name_font_size);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-    p->j_preset_name_height = extents.height;
-
-    jgraphics_destroy(g);
-    jgraphics_surface_destroy(surface);
-}
-
-void presetter_init_write_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(p, WRITE_BUTTON_TEXT, &p->j_write_button_width, &p->j_write_button_height);
-}
+/* Element Measurements (Avoid Circular Bounds References) */
 
 void presetter_init_status_dim(t_presetter *p) {
-    t_jsurface *surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
-    t_jgraphics *g = jgraphics_create(surface);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_status_font_size);
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
+    jgraphics_font_extents(p->offscreen, &extents);
     p->j_status_height = extents.height;
-
-    jgraphics_destroy(g);
-    jgraphics_surface_destroy(surface);
-}
-
-void presetter_init_confirm_ok_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(
-        p, CONFIRM_OK_BUTTON_TEXT,
-        &p->j_confirm_ok_button_width,
-        &p->j_confirm_ok_button_height
-    );
-}
-
-void presetter_init_confirm_cancel_button_dim(t_presetter *p) {
-    presetter_get_init_button_dim(
-        p, CONFIRM_CANCEL_BUTTON_TEXT,
-        &p->j_confirm_cancel_button_width,
-        &p->j_confirm_cancel_button_height
-    );
 }
 
 /* Jbox Init */
@@ -373,6 +320,10 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         // Slots
         p->j_slots = hashtab_new(0);
 
+        // jgraphics
+        p->surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
+        p->offscreen = jgraphics_create(p->surface);
+
         // Grid
         p->j_selected_cell = -1;
         p->j_hovered_cell = -1;
@@ -380,30 +331,24 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         // Preset Name
         p->j_editing_name = false;
-        p->j_preset_name_font_size = 10;
-        presetter_init_preset_name_dim(p);
 
         // Write Button
-        p->j_button_font_size = 9;
         p->j_write_button_down = false;
-        presetter_init_write_button_dim(p);
 
         // Status
         p->j_status = PRESETTER_NO_STATUS;
         p->j_status_override = PRESETTER_NO_STATUS;
-        p->j_status_font_size = 9;
         presetter_init_status_dim(p);
 
         // Confirm
         p->j_confirm_cell = -1;
         p->j_confirm_store = false;
         p->j_confirm_delete = false;
-
-        presetter_init_confirm_ok_button_dim(p);
         p->j_confirm_ok_button_down = false;
-
-        presetter_init_confirm_cancel_button_dim(p);
         p->j_confirm_cancel_button_down = false;
+
+        // Pagination
+        p->j_pagination_number = 1;
 
         attr_dictionary_process(p, d);
         jbox_ready(&p->j_box);
@@ -418,6 +363,8 @@ void presetter_free(t_presetter *p) {
     if (p->j_pattrstorage) {
         object_detach_byptr(p, p->j_pattrstorage);
     }
+    jgraphics_destroy(p->offscreen);
+    jgraphics_surface_destroy(p->surface);
 }
 
 // -----------------------------------------------------------------------------
@@ -441,28 +388,6 @@ t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
     snprintf_zero(key, sizeof(key), "%ld", index);
     hashtab_lookup(p->j_slots, gensym(key), (t_object **)&name);
     return name;
-}
-
-/* Text Measurement (inside of paint) */
-
-void presetter_measure_text(t_jgraphics *g, char *text, double *outwidth, double *outheight) {
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, 9);
-    jgraphics_text_measure(g, text, outwidth, outheight);
-}
-
-/* Text Measurement (outside of paint) */
-
-void presetter_measure_surface_text(t_presetter *p, char *text, double *outwidth, double *outheight) {
-    t_jsurface *surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
-    t_jgraphics *g = jgraphics_create(surface);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, 9);
-    jgraphics_text_measure(g, text, outwidth, outheight);
-
-    jgraphics_destroy(g);
-    jgraphics_surface_destroy(surface);
 }
 
 /* Find pattrstorage */
@@ -739,14 +664,29 @@ void presetter_handle_rename(t_presetter *p) {
 // Element Bounds
 // -----------------------------------------------------------------------------
 
+void presetter_measure_button(t_presetter *p, char *text, double *outwidth, double *outheight) {
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, BUTTON_FONT_SIZE);
+
+    double text_width;
+    double text_height;
+    jgraphics_text_measure(p->offscreen, text, &text_width, &text_height);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(p->offscreen, &extents);
+
+    *outwidth = text_width + BUTTON_PADDING_X * 2;
+    *outheight = extents.ascent + extents.descent + BUTTON_PADDING_Y * 2;
+}
+
 /* Write Button Bounds */
 
 t_bounds presetter_get_write_button_bounds(t_presetter *p, t_rect *rect) {
     t_bounds bounds;
-    bounds.x = rect->width - p->j_write_button_width - WRITE_BUTTON_OFFSET_X;
+    presetter_measure_button(p, WRITE_BUTTON_TEXT, &bounds.width, &bounds.height);
+    bounds.x = rect->width - bounds.width - WRITE_BUTTON_OFFSET_X;
     bounds.y = WRITE_BUTTON_OFFSET_Y;
-    bounds.width = p->j_write_button_width;
-    bounds.height = p->j_write_button_height;
+    presetter_measure_button(p, WRITE_BUTTON_TEXT, &bounds.width, &bounds.height);
     return bounds;
 }
 
@@ -762,6 +702,12 @@ bool presetter_in_write_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Preset Name Bounds */
 
 t_bounds presetter_get_preset_name_bounds(t_presetter *p, t_rect *rect) {
+    jgraphics_select_font_face(p->offscreen, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, PRESET_NAME_FONT_SIZE);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(p->offscreen, &extents);
+
     t_bounds wbbounds = presetter_get_write_button_bounds(p, rect);
 
     t_bounds bounds;
@@ -772,7 +718,7 @@ t_bounds presetter_get_preset_name_bounds(t_presetter *p, t_rect *rect) {
                    PRESET_NAME_OFFSET_X -
                    WRITE_BUTTON_OFFSET_X -
                    PRESET_NAME_MARGIN_RIGHT;
-    bounds.height = p->j_preset_name_height;
+    bounds.height = extents.height;
     return bounds;
 }
 
@@ -788,10 +734,12 @@ bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Grid Bounds */
 
 t_grid_dim presetter_get_grid_dim(t_presetter *p, t_rect *rect) {
+    t_bounds pnbounds = presetter_get_preset_name_bounds(p, rect);
+
     t_grid_dim dim;
     dim.columns = (int)floor((rect->width - CELL_PADDING - GRID_OFFSET_X) / CELL_TOTAL_SIZE);
 
-    double grid_y_pos = PRESET_NAME_OFFSET_Y + p->j_preset_name_height + GRID_OFFSET_Y;
+    double grid_y_pos = PRESET_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y;
     double grid_space = rect->height -
                         grid_y_pos -
                         p->j_status_height -
@@ -840,15 +788,119 @@ t_cell_pos presetter_get_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt) {
     return pos;
 }
 
+long presetter_get_grid_offset(t_presetter *p, t_grid_dim *dim) {
+    return (p->j_pagination_number - 1) * dim->rows * dim->columns;
+}
+
+long presetter_get_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_grid_dim dim = presetter_get_grid_dim(p, rect);
+    t_cell_pos pos = presetter_get_cell_pos(p, rect, pt);
+
+    return (pos.x + dim.columns * pos.y + 1) + presetter_get_grid_offset(p, &dim);
+    ;
+}
+
+/* Right Arrow Bounds */
+
+t_bounds presetter_get_right_arrow_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+
+    double text_width;
+    double text_height;
+
+    jgraphics_select_font_face(
+        p->offscreen, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
+    );
+    jgraphics_set_font_size(p->offscreen, PAGINATION_ARROW_FONT_SIZE);
+    jgraphics_text_measure(p->offscreen, PAGINATION_RIGHT_ARROW_TEXT, &text_width, &text_height);
+
+    t_bounds bounds;
+    bounds.x = rect->width - text_width - PAGINATION_MARGIN_RIGHT;
+    bounds.y = gbounds.y + gbounds.height + PAGINATION_MARGIN_TOP;
+    bounds.width = text_width;
+    bounds.height = text_height;
+    return bounds;
+}
+
+bool presetter_in_right_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_right_arrow_bounds(p, rect);
+
+    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
+    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
+
+    return in_x && in_y;
+}
+
+/* Pagination Number Bounds */
+
+t_bounds presetter_get_pagination_number_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds rabounds = presetter_get_right_arrow_bounds(p, rect);
+
+    double text_width;
+    double text_height;
+
+    char number_text[16];
+    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_pagination_number);
+
+    jgraphics_select_font_face(
+        p->offscreen, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
+    );
+    jgraphics_set_font_size(p->offscreen, PAGINATION_NUMBER_FONT_SIZE);
+    jgraphics_text_measure(p->offscreen, number_text, &text_width, &text_height);
+
+    t_bounds bounds;
+    bounds.x = rect->width - text_width - PAGINATION_ARROW_PADDING - (rect->width - rabounds.x);
+    bounds.y = gbounds.y + gbounds.height + PAGINATION_MARGIN_TOP;
+    bounds.width = text_width;
+    bounds.height = rabounds.height;
+
+    return bounds;
+}
+
+/* Left Arrow Bounds */
+
+t_bounds presetter_get_left_arrow_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds pnbounds = presetter_get_pagination_number_bounds(p, rect);
+
+    double text_width;
+    double text_height;
+
+    jgraphics_select_font_face(
+        p->offscreen, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
+    );
+    jgraphics_set_font_size(p->offscreen, PAGINATION_ARROW_FONT_SIZE);
+    jgraphics_text_measure(p->offscreen, PAGINATION_RIGHT_ARROW_TEXT, &text_width, &text_height);
+
+    t_bounds bounds;
+    bounds.x = rect->width - text_width - PAGINATION_ARROW_PADDING - (rect->width - pnbounds.x);
+    bounds.y = gbounds.y + gbounds.height + PAGINATION_MARGIN_TOP;
+    bounds.width = text_width;
+    bounds.height = text_height;
+    return bounds;
+}
+
+bool presetter_in_left_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_left_arrow_bounds(p, rect);
+
+    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
+    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
+
+    return in_x && in_y;
+}
+
 /* Status Bounds */
 
 t_bounds presetter_get_status_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    // t_bounds ra_bounds = presetter_get_right_arrow_bounds(p, rect);
+    t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
 
     t_bounds bounds;
     bounds.x = STATUS_OFFSET_X;
     bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
-    bounds.width = rect->width - STATUS_OFFSET_X * 2;
+    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
     bounds.height = p->j_status_height;
     return bounds;
 }
@@ -864,28 +916,25 @@ bool presetter_in_preset_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 /* Confirm Ok Button Bounds */
 
-t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_jgraphics *g) {
+t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_grid_bounds(p, rect);
 
     double text_width;
     double text_height;
 
-    if (g) {
-        presetter_measure_text(g, p->j_confirm_status_text, &text_width, &text_height);
-    } else {
-        presetter_measure_surface_text(p, p->j_confirm_status_text, &text_width, &text_height);
-    }
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, 9);
+    jgraphics_text_measure(p->offscreen, p->j_confirm_status_text, &text_width, &text_height);
 
     t_bounds bounds;
     bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
     bounds.y = gbounds.y + gbounds.height + CONFIRM_BUTTON_OFFSET_Y;
-    bounds.width = p->j_confirm_ok_button_width;
-    bounds.height = p->j_confirm_ok_button_height;
+    presetter_measure_button(p, CONFIRM_OK_BUTTON_TEXT, &bounds.width, &bounds.height);
     return bounds;
 }
 
-bool presetter_in_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt, t_jgraphics *g) {
-    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect, g);
+bool presetter_in_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
 
     bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
     bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
@@ -893,19 +942,18 @@ bool presetter_in_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *p
     return in_x && in_y;
 }
 
-t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_jgraphics *g) {
-    t_bounds cobounds = presetter_get_confirm_ok_button_bounds(p, rect, g);
+t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds cobounds = presetter_get_confirm_ok_button_bounds(p, rect);
 
     t_bounds bounds;
     bounds.x = cobounds.x + cobounds.width + CONFIRM_CANCEL_BUTTON_MARGIN_LEFT;
     bounds.y = cobounds.y;
-    bounds.width = p->j_confirm_cancel_button_width;
-    bounds.height = p->j_confirm_cancel_button_height;
+    presetter_measure_button(p, CONFIRM_CANCEL_BUTTON_TEXT, &bounds.width, &bounds.height);
     return bounds;
 }
 
-bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt, t_jgraphics *g) {
-    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect, g);
+bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
 
     bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
     bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
@@ -949,9 +997,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     }
 
     if (presetter_in_grid_bounds(p, &rect, &pt)) {
-        t_grid_dim dim = presetter_get_grid_dim(p, &rect);
-        t_cell_pos pos = presetter_get_cell_pos(p, &rect, &pt);
-        long cell_idx = pos.x + dim.columns * pos.y + 1;
+        long cell_idx = presetter_get_cell_idx(p, &rect, &pt);
 
         if (modifiers & eLeftButton &&
             (modifiers & eAltKey) &&
@@ -995,13 +1041,27 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     }
 
     if ((p->j_confirm_store || p->j_confirm_delete) && p->j_confirm_status_text[0] != '\0' && p->j_confirm_cell != -1) {
-        if (presetter_in_confirm_ok_button_bounds(p, &rect, &pt, NULL)) {
+        if (presetter_in_confirm_ok_button_bounds(p, &rect, &pt)) {
             p->j_confirm_ok_button_down = true;
         }
 
-        if (presetter_in_confirm_cancel_button_bounds(p, &rect, &pt, NULL)) {
+        if (presetter_in_confirm_cancel_button_bounds(p, &rect, &pt)) {
             p->j_confirm_cancel_button_down = true;
         }
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (presetter_in_right_arrow_bounds(p, &rect, &pt)) {
+        p->j_pagination_number = p->j_pagination_number + 1;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_pagination_number > 1) {
+        p->j_pagination_number = p->j_pagination_number - 1;
+        jbox_redraw((t_jbox *)p);
+        return;
     }
 }
 
@@ -1039,7 +1099,7 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         t_grid_dim dim = presetter_get_grid_dim(p, &rect);
         t_cell_pos pos = presetter_get_cell_pos(p, &rect, &pt);
 
-        p->j_hovered_cell = pos.x + dim.columns * pos.y + 1;
+        p->j_hovered_cell = (pos.x + dim.columns * pos.y + 1) + presetter_get_grid_offset(p, &dim);
 
         t_symbol *name = presetter_lookup_slot(p, p->j_hovered_cell);
 
@@ -1139,7 +1199,7 @@ void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     }
 
     jgraphics_select_font_face(g, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_preset_name_font_size);
+    jgraphics_set_font_size(g, PRESET_NAME_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
@@ -1258,7 +1318,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     jgraphics_fill(g);
 
     jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_button_font_size);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
     jgraphics_set_source_jrgba(g, &text_color);
 
     t_jgraphics_font_extents extents;
@@ -1275,7 +1335,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row_idx, double y) {
     for (int i = 0; i < dim->columns; i++) {
         double x = (double)i * CELL_TOTAL_SIZE + CELL_PADDING + GRID_OFFSET_X;
-        int cell_idx = i + dim->columns * row_idx + 1;
+        int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_grid_offset(p, dim);
 
         t_jrgba color;
         t_symbol *name = presetter_lookup_slot(p, cell_idx);
@@ -1326,7 +1386,7 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_status_bounds(p, rect);
 
     jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_NORMAL);
-    jgraphics_set_font_size(g, p->j_status_font_size);
+    jgraphics_set_font_size(g, STATUS_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
@@ -1376,7 +1436,7 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
     if (p->j_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
         return;
 
-    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect, g);
+    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
 
     t_jrgba bg_color;
     t_jrgba text_color;
@@ -1401,7 +1461,7 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
     jgraphics_fill(g);
 
     jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_button_font_size);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
     jgraphics_set_source_jrgba(g, &text_color);
 
     t_jgraphics_font_extents extents;
@@ -1417,7 +1477,7 @@ void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect
     if (p->j_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
         return;
 
-    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect, g);
+    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
 
     t_jrgba bg_color;
     t_jrgba text_color;
@@ -1442,7 +1502,7 @@ void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect
     jgraphics_fill(g);
 
     jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, p->j_button_font_size);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
     jgraphics_set_source_jrgba(g, &text_color);
 
     t_jgraphics_font_extents extents;
@@ -1451,6 +1511,51 @@ void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect
     double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
     jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
     jgraphics_text_path(g, CONFIRM_CANCEL_BUTTON_TEXT);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_right_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_right_arrow_bounds(p, rect);
+
+    t_jrgba color;
+    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    jgraphics_set_source_jrgba(g, &color);
+    jgraphics_select_font_face(g, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, PAGINATION_ARROW_FONT_SIZE);
+
+    jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
+    jgraphics_text_path(g, PAGINATION_RIGHT_ARROW_TEXT);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_pagination_number_bounds(p, rect);
+
+    t_jrgba color;
+    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    jgraphics_set_source_jrgba(g, &color);
+    jgraphics_select_font_face(g, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, PAGINATION_NUMBER_FONT_SIZE);
+
+    char number_text[16];
+    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_pagination_number);
+
+    jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
+    jgraphics_text_path(g, number_text);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_left_arrow_bounds(p, rect);
+
+    t_jrgba color;
+    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    jgraphics_set_source_jrgba(g, &color);
+    jgraphics_select_font_face(g, PAGINATION_ARROW_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, PAGINATION_ARROW_FONT_SIZE);
+
+    jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
+    jgraphics_text_path(g, PAGINATION_LEFT_ARROW_TEXT);
     jgraphics_fill(g);
 }
 
@@ -1476,4 +1581,8 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
 
     presetter_draw_confirm_ok_button(p, g, &rect);
     presetter_draw_confirm_cancel_button(p, g, &rect);
+
+    presetter_draw_right_arrow(p, g, &rect);
+    presetter_draw_pagination_number(p, g, &rect);
+    presetter_draw_left_arrow(p, g, &rect);
 }
