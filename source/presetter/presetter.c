@@ -97,11 +97,11 @@
 #define PAGINATION_MARGIN_RIGHT 9
 #define PAGINATION_NUMBER_FONT "Arial"
 #define PAGINATION_NUMBER_FONT_SIZE 10
-#define PAGINATION_LEFT_ARROW_TEXT "←"
-#define PAGINATION_RIGHT_ARROW_TEXT "→"
+#define PAGINATION_LEFT_ARROW_TEXT "‹"
+#define PAGINATION_RIGHT_ARROW_TEXT "›"
 #define PAGINATION_ARROW_FONT "Menlo"
 #define PAGINATION_ARROW_FONT_SIZE 13
-#define PAGINATION_ARROW_PADDING 3
+#define PAGINATION_ARROW_PADDING 2
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -364,7 +364,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 }
 
 void presetter_free(t_presetter *p) {
-    hashtab_clear(p->j_slots);
+    object_free(p->j_slots);
     jbox_free((t_jbox *)p);
     if (p->j_pattrstorage) {
         object_detach_byptr(p, p->j_pattrstorage);
@@ -1602,7 +1602,7 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     t_jrgba color;
     presetter_hex_to_rgba(&color, BG_COLOR_HEX, 1);
 
-    jgraphics_rectangle(g, 0, 0, rect.width, rect.height);
+    jgraphics_rectangle_rounded(g, 0, 0, rect.width, rect.height, 4, 4);
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_fill(g);
 
