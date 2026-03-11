@@ -1,5 +1,12 @@
 #include "ext.h"
+#include "ext_atomarray.h"
+#include "ext_dictionary.h"
+#include "ext_hashtab.h"
+#include "ext_mess.h"
+#include "ext_obex.h"
 #include "jgraphics.h"
+#include "jpatcher_api.h"
+#include "max_types.h"
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -195,8 +202,8 @@ typedef struct _presetter {
     bool j_pagination_right_arrow_down;
 
     // Filters
-    t_symbol *j_current_filter;
     t_dictionary *j_filters;
+    t_hashtab *j_applied_filters;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -227,10 +234,15 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 // Filters
 void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_applyfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_resetfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_resetfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 // Catchall
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
@@ -281,10 +293,16 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_addfilter, "addfilter", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_renamefilter, "renamefilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_clearfilter, "clearfilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilter, "removefilter", A_GIMME, 0);
+
     class_addmethod(c, (method)presetter_addfilterslot, "addfilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilterslot, "removefilterslot", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_resetfilters, "resetfilters", A_GIMME, 0);
+
+    class_addmethod(c, (method)presetter_applyfilter, "applyfilter", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_resetfilter, "resetfilter", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
@@ -402,6 +420,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         p->j_patcher_path = presetter_get_patcher_path(p);
         p->j_filters = dictionary_new();
+        p->j_applied_filters = hashtab_new(0);
 
         dictionary_read("filters.json", p->j_patcher_path, &p->j_filters);
 
@@ -456,7 +475,37 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *s) {
         return false;
 
     arr = atomarray_new(0, NULL);
-    return dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) == MAX_ERR_NONE;
+
+    if (dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    hashtab_clear(p->j_applied_filters);
+    return true;
+}
+
+bool presetter_rename_filter_sym(t_presetter *p, t_symbol *so, t_symbol *sn) {
+    if (!dictionary_hasentry(p->j_filters, so))
+        return false;
+
+    if (dictionary_hasentry(p->j_filters, sn))
+        return false;
+
+    long argc;
+    t_atom *argv;
+
+    if (dictionary_copyatoms(p->j_filters, so, &argc, &argv) != MAX_ERR_NONE)
+        return false;
+
+    if (dictionary_appendatoms(p->j_filters, sn, argc, argv) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    if (dictionary_deleteentry(p->j_filters, so) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
 }
 
 bool presetter_clear_filter_sym(t_presetter *p, t_symbol *s) {
@@ -467,8 +516,7 @@ bool presetter_clear_filter_sym(t_presetter *p, t_symbol *s) {
         return false;
 
     atomarray_clear(arr);
-
-    return true;
+    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
 }
 
 bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
@@ -479,7 +527,11 @@ bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
         return false;
     }
 
-    return dictionary_deleteentry(p->j_filters, s) == MAX_ERR_NONE;
+    if (dictionary_deleteentry(p->j_filters, s) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
 }
 
 bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
@@ -552,6 +604,73 @@ bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     atomarray_chuckindex(arr, idx);
 
     return true;
+}
+
+bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
+    if (!dictionary_hasentry(p->j_filters, s)) {
+        return false;
+    }
+
+    hashtab_storelong(p->j_applied_filters, s, (t_atom_long) true);
+
+    return true;
+}
+
+bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
+    if (!dictionary_hasentry(p->j_filters, s)) {
+        return false;
+    }
+
+    hashtab_delete(p->j_applied_filters, s);
+
+    return true;
+}
+
+bool presetter_reset_filter_all(t_presetter *p) {
+    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
+}
+
+bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
+    if (hashtab_getsize(p->j_applied_filters) == 0) {
+        return false;
+    }
+
+    long kc;
+    t_symbol **kvs = NULL;
+    hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
+
+    bool found_match = false;
+
+    if (kvs == NULL) {
+        return false;
+    }
+
+    for (long i = 0; i < kc; i++) {
+        if (found_match)
+            break;
+
+        t_symbol *key = kvs[i];
+        t_atomarray *arr = NULL;
+        dictionary_getatomarray(p->j_filters, key, (t_object **)&arr);
+        if (!arr)
+            continue;
+
+        long ac = 0;
+        t_atom *av = NULL;
+        atomarray_getatoms(arr, &ac, &av);
+
+        if (ac == 0 || av == NULL)
+            continue;
+
+        for (long j = 0; j < ac; j++) {
+            if (atom_gettype(&av[j]) == A_LONG && atom_getlong(&av[j]) == cell_idx) {
+                found_match = true;
+                break;
+            }
+        }
+    }
+
+    return found_match;
 }
 
 /* Find pattrstorage */
@@ -698,12 +817,12 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     }
 
     if (atom_gettype(argv) == A_SYM && atom_getsym(argv) == gensym("done")) {
-        jbox_redraw((t_jbox *)p);
         if (!presetter_lookup_slot(p, p->j_selected_cell)) {
             p->j_selected_cell = -1;
             p->j_preset_name[0] = '\0';
             p->j_status = PRESETTER_NO_STATUS;
         }
+        jbox_redraw((t_jbox *)p);
         return;
     }
 
@@ -739,6 +858,23 @@ void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
+
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 2)
+        return;
+
+    if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_SYM)
+        return;
+
+    if (presetter_rename_filter_sym(p, atom_getsym(argv), atom_getsym(argv + 1)) == MAX_ERR_NONE) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
+
+    jbox_redraw((t_jbox *)p);
 }
 
 void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -765,6 +901,8 @@ void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
+
+    jbox_redraw((t_jbox *)p);
 }
 
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -778,6 +916,8 @@ void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *arg
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
+
+    jbox_redraw((t_jbox *)p);
 }
 
 void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -791,6 +931,35 @@ void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
+
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_applyfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 1)
+        return;
+
+    if (atom_gettype(argv) != A_SYM)
+        return;
+
+    presetter_apply_filter_sym(p, atom_getsym(argv));
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_resetfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 1)
+        return;
+
+    if (atom_gettype(argv) != A_SYM)
+        return;
+
+    presetter_reset_filter_sym(p, atom_getsym(argv));
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_resetfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    presetter_reset_filter_all(p);
+    jbox_redraw((t_jbox *)p);
 }
 
 // Pass through unknown messages silently
@@ -1565,12 +1734,16 @@ void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row
 
         t_jrgba color;
         t_symbol *name = presetter_lookup_slot(p, cell_idx);
+        bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
 
         if (p->j_selected_cell == cell_idx) {
             t_jrgba color_off;
             jcolor_getcolor(GRID_SELECTED_CELL_COLOR_SYM, &color, &color_off);
         } else if (p->j_hovered_cell == cell_idx) {
             presetter_hex_to_rgba(&color, GRID_HOVERED_CELL_COLOR_HEX, 1);
+        } else if (filtered_cell) {
+            t_jrgba color_off;
+            jcolor_getcolor(GRID_SELECTED_CELL_COLOR_SYM, &color, &color_off);
         } else if (name) {
             presetter_hex_to_rgba(&color, GRID_STORED_CELL_COLOR_HEX, 1);
         } else {
@@ -1579,6 +1752,11 @@ void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row
 
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
         jgraphics_set_source_jrgba(g, &color);
+
+        if (filtered_cell && p->j_selected_cell != cell_idx) {
+            jgraphics_fill_with_alpha(g, filtered_cell ? .5 : 1);
+        }
+
         jgraphics_fill(g);
     }
 }
