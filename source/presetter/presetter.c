@@ -203,36 +203,51 @@ typedef struct _presetter {
 // Forward Declarations
 // -----------------------------------------------------------------------------
 
-// Init
+/* Init */
+
 t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv);
 void presetter_free(t_presetter *p);
 
-// Attributes
+/* Attributes */
+
 t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv);
 
-// Messages
+/* Messages */
+
+// General
 void presetter_loadbang(t_presetter *p, long action);
 void presetter_bang(t_presetter *p);
 void presetter_assist(t_presetter *x, void *b, long io, long index, char *s);
 t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sender, void *data);
 
+// pattrstorage Dumpout
 void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
+// Filters
+void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
+// Catchall
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
-// Pointer events
+/* Pointer events */
+
 void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 void presetter_mouseleave(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers);
 
-// Keyboard events
+/* Keyboard events */
+
 long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long modifiers, long textcharacter);
 
-// Drawing
+/* Drawing */
+
 void presetter_paint(t_presetter *p, t_object *patcherview);
 
 // -----------------------------------------------------------------------------
@@ -247,13 +262,7 @@ void ext_main(void *r) {
     t_class *c;
 
     c = class_new(
-        "presetter",
-        (method)presetter_new,
-        (method)presetter_free,
-        sizeof(t_presetter),
-        (method)NULL,
-        A_GIMME,
-        0
+        "presetter", (method)presetter_new, (method)presetter_free, sizeof(t_presetter), (method)NULL, A_GIMME, 0
     );
 
     c->c_flags |= CLASS_FLAG_NEWDICTIONARY;
@@ -270,8 +279,13 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_read, "read", A_GIMME, 0);
     class_addmethod(c, (method)presetter_recall, "recall", A_GIMME, 0);
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
+
+    class_addmethod(c, (method)presetter_addfilter, "addfilter", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_clearfilter, "clearfilter", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_removefilter, "removefilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_addfilterslot, "addfilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilterslot, "removefilterslot", A_GIMME, 0);
+
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_mousedown, "mousedown", A_CANT, 0);
@@ -434,6 +448,40 @@ t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
 
 /* Filter Dictionary Utilities */
 
+bool presetter_add_filter_sym(t_presetter *p, t_symbol *s) {
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+
+    if (arr)
+        return false;
+
+    arr = atomarray_new(0, NULL);
+    return dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) == MAX_ERR_NONE;
+}
+
+bool presetter_clear_filter_sym(t_presetter *p, t_symbol *s) {
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+
+    if (!arr)
+        return false;
+
+    atomarray_clear(arr);
+
+    return true;
+}
+
+bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+
+    if (!arr) {
+        return false;
+    }
+
+    return dictionary_deleteentry(p->j_filters, s) == MAX_ERR_NONE;
+}
+
 bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     t_atom a;
     atom_setlong(&a, slot);
@@ -477,7 +525,6 @@ bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
 
     if (!arr) {
-        post("Failed to retrieve atomarray");
         return false;
     }
 
@@ -499,7 +546,6 @@ bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     }
 
     if (idx == -1) {
-        post("No index found");
         return false;
     }
 
@@ -524,11 +570,7 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (!patcher)
         return NULL;
 
-    t_object *box = (t_object *)object_method(
-        patcher,
-        gensym("getnamedbox"),
-        p->j_pattrstorage_name
-    );
+    t_object *box = (t_object *)object_method(patcher, gensym("getnamedbox"), p->j_pattrstorage_name);
 
     if (box) {
         t_object *ps = jbox_get_object(box);
@@ -685,6 +727,45 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 }
 
 /* Filters */
+
+void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 1)
+        return;
+
+    if (atom_gettype(argv) != A_SYM)
+        return;
+
+    if (presetter_add_filter_sym(p, atom_getsym(argv))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
+}
+
+void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 1)
+        return;
+
+    if (atom_gettype(argv) != A_SYM)
+        return;
+
+    if (presetter_clear_filter_sym(p, atom_getsym(argv))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
+}
+
+void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 1)
+        return;
+
+    if (atom_gettype(argv) != A_SYM)
+        return;
+
+    if (presetter_remove_filter_sym(p, atom_getsym(argv))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
+}
 
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     if (argc < 2)
@@ -859,11 +940,8 @@ t_bounds presetter_get_preset_name_bounds(t_presetter *p, t_rect *rect) {
     t_bounds bounds;
     bounds.x = PRESET_NAME_OFFSET_X;
     bounds.y = PRESET_NAME_OFFSET_Y;
-    bounds.width = rect->width -
-                   wbbounds.width -
-                   PRESET_NAME_OFFSET_X -
-                   WRITE_BUTTON_OFFSET_X -
-                   PRESET_NAME_MARGIN_RIGHT;
+    bounds.width =
+        rect->width - wbbounds.width - PRESET_NAME_OFFSET_X - WRITE_BUTTON_OFFSET_X - PRESET_NAME_MARGIN_RIGHT;
     bounds.height = extents.height;
     return bounds;
 }
@@ -886,11 +964,7 @@ t_grid_dim presetter_get_grid_dim(t_presetter *p, t_rect *rect) {
     dim.columns = (int)floor((rect->width - CELL_PADDING - GRID_OFFSET_X) / CELL_TOTAL_SIZE);
 
     double grid_y_pos = PRESET_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y;
-    double grid_space = rect->height -
-                        grid_y_pos -
-                        p->j_status_height -
-                        STATUS_OFFSET_Y -
-                        CELL_PADDING;
+    double grid_space = rect->height - grid_y_pos - p->j_status_height - STATUS_OFFSET_Y - CELL_PADDING;
     dim.rows = (int)floor(grid_space / CELL_TOTAL_SIZE);
     if (dim.rows < 0)
         dim.rows = 0;
@@ -1145,9 +1219,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     if (presetter_in_grid_bounds(p, &rect, &pt)) {
         long cell_idx = presetter_get_cell_idx(p, &rect, &pt);
 
-        if (modifiers & eLeftButton &&
-            (modifiers & eAltKey) &&
-            (modifiers & eShiftKey) &&
+        if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
             !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
             p->j_editing_name = false;
             p->j_confirm_delete = true;
@@ -1158,8 +1230,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             return;
         }
 
-        if (modifiers & eLeftButton &&
-            !(modifiers & eShiftKey) &&
+        if (modifiers & eLeftButton && !(modifiers & eShiftKey) &&
             // Allow for interaction in unlocked patches
             // !(modifiers & eCommandKey) &&
             // !(modifiers & eControlKey) &&
@@ -1170,8 +1241,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             return;
         }
 
-        if (modifiers & eLeftButton &&
-            modifiers & eShiftKey &&
+        if (modifiers & eLeftButton && modifiers & eShiftKey &&
             // Allow for interaction in unlocked patches
             // !(modifiers & eCommandKey) &&
             // !(modifiers & eControlKey) &&
@@ -1265,14 +1335,10 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
         if (name && name != gensym("<(unnamed)>")) {
             snprintf_zero(
-                p->j_hover_status_text, sizeof(p->j_hover_status_text),
-                "Preset %d: %s", p->j_hovered_cell, name->s_name
+                p->j_hover_status_text, sizeof(p->j_hover_status_text), "Preset %d: %s", p->j_hovered_cell, name->s_name
             );
         } else {
-            snprintf_zero(
-                p->j_hover_status_text, sizeof(p->j_hover_status_text),
-                "Preset %d", p->j_hovered_cell
-            );
+            snprintf_zero(p->j_hover_status_text, sizeof(p->j_hover_status_text), "Preset %d", p->j_hovered_cell);
         }
 
         if (p->j_status == PRESETTER_HOVER_STATUS || p->j_hovered_cell != p->j_last_hovered_cell) {
