@@ -145,6 +145,9 @@ typedef struct _presetter {
     // Outlets
     void *j_outlet1;
 
+    // Patcher
+    short j_patcher_path;
+
     // Attributes
     t_symbol *j_pattrstorage_name;
 
@@ -190,6 +193,10 @@ typedef struct _presetter {
     long j_pagination_number;
     bool j_pagination_left_arrow_down;
     bool j_pagination_right_arrow_down;
+
+    // Filters
+    t_symbol *j_current_filter;
+    t_dictionary *j_filters;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -212,6 +219,8 @@ t_max_err presetter_notify(t_presetter *p, t_symbol *s, t_symbol *msg, void *sen
 void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 // Pointer events
@@ -261,6 +270,8 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_read, "read", A_GIMME, 0);
     class_addmethod(c, (method)presetter_recall, "recall", A_GIMME, 0);
     class_addmethod(c, (method)presetter_slotname, "slotname", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_addfilterslot, "addfilterslot", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_removefilterslot, "removefilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_mousedown, "mousedown", A_CANT, 0);
@@ -300,6 +311,25 @@ void presetter_init_status_dim(t_presetter *p) {
 }
 
 /* Jbox Init */
+
+short presetter_get_patcher_path(t_presetter *p) {
+    t_object *patcher = NULL;
+    object_obex_lookup(p, gensym("#P"), &patcher);
+
+    if (!patcher)
+        return 0;
+
+    t_symbol *patcher_fpath = object_attr_getsym(patcher, gensym("filepath"));
+
+    if (!patcher_fpath || patcher_fpath == gensym(""))
+        return 0;
+
+    short patch_pathid;
+    char patcher_fname[MAX_PATH_CHARS];
+    path_frompathname(patcher_fpath->s_name, &patch_pathid, patcher_fname);
+
+    return patch_pathid;
+}
 
 t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
     t_presetter *p = NULL;
@@ -356,6 +386,11 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_pagination_left_arrow_down = false;
         p->j_pagination_right_arrow_down = false;
 
+        p->j_patcher_path = presetter_get_patcher_path(p);
+        p->j_filters = dictionary_new();
+
+        dictionary_read("filters.json", p->j_patcher_path, &p->j_filters);
+
         attr_dictionary_process(p, d);
         jbox_ready(&p->j_box);
     }
@@ -371,6 +406,7 @@ void presetter_free(t_presetter *p) {
     }
     jgraphics_destroy(p->offscreen);
     jgraphics_surface_destroy(p->surface);
+    object_free(p->j_filters);
 }
 
 // -----------------------------------------------------------------------------
@@ -394,6 +430,82 @@ t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
     snprintf_zero(key, sizeof(key), "%ld", index);
     hashtab_lookup(p->j_slots, gensym(key), (t_object **)&name);
     return name;
+}
+
+/* Filter Dictionary Utilities */
+
+bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+    t_atom a;
+    atom_setlong(&a, slot);
+
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+
+    if (!arr) {
+        arr = atomarray_new(1, &a);
+        if (!arr)
+            return false;
+
+        if (dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) != MAX_ERR_NONE) {
+            return false;
+        }
+
+        return true;
+    }
+
+    long size;
+    t_atom *results;
+
+    if (MAX_ERR_NONE != atomarray_getatoms(arr, &size, &results)) {
+        return false;
+    }
+
+    for (long i = 0; i < size; i++) {
+        t_atom *result = &results[i];
+        if (atom_gettype(result) == A_LONG && atom_getlong(result) == slot) {
+            return false;
+        }
+    }
+
+    atomarray_appendatom((t_atomarray *)arr, &a);
+
+    return true;
+}
+
+bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+
+    if (!arr) {
+        post("Failed to retrieve atomarray");
+        return false;
+    }
+
+    long size;
+    t_atom *results;
+
+    if (MAX_ERR_NONE != atomarray_getatoms(arr, &size, &results)) {
+        return false;
+    }
+
+    long idx = -1;
+
+    for (long i = 0; i < size; i++) {
+        t_atom *result = &results[i];
+        if (atom_gettype(result) == A_LONG && atom_getlong(result) == slot) {
+            idx = i;
+            break;
+        }
+    }
+
+    if (idx == -1) {
+        post("No index found");
+        return false;
+    }
+
+    atomarray_chuckindex(arr, idx);
+
+    return true;
 }
 
 /* Find pattrstorage */
@@ -570,6 +682,34 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     char key[24];
     snprintf_zero(key, sizeof(key), "%ld", index);
     hashtab_store(p->j_slots, gensym(key), (t_object *)name);
+}
+
+/* Filters */
+
+void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 2)
+        return;
+
+    if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_LONG)
+        return;
+
+    if (presetter_set_filter_slot(p, atom_getsym(argv), atom_getlong(argv + 1))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
+}
+
+void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (argc < 2)
+        return;
+
+    if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_LONG)
+        return;
+
+    if (presetter_drop_filter_slot(p, atom_getsym(argv), atom_getlong(argv + 1))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        return;
+    }
 }
 
 // Pass through unknown messages silently
