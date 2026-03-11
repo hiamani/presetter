@@ -4,6 +4,7 @@
 #include "ext_hashtab.h"
 #include "ext_mess.h"
 #include "ext_obex.h"
+#include "ext_proto.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "max_types.h"
@@ -44,22 +45,35 @@
 
 // Status
 #define STATUS_TEXT_COLOR_HEX "#999999"
-#define STATUS_CONFIRM_TEXT_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+#define STATUS_CONFIRM_TEXT_COLOR_SYM gensym("live_display_handle_two")
 
 // Refresh
-#define REFRESH_ON_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-#define REFRESH_OFF_COLOR_HEX "#333333"
+// #define REFRESH_ON_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+// #define REFRESH_OFF_COLOR_HEX "#333333"
 
 // Confirm
 #define CONFIRM_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
-#define CONFIRM_BUTTON_UP_TEXT_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-#define CONFIRM_BUTTON_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+#define CONFIRM_BUTTON_UP_TEXT_COLOR_SYM gensym("live_display_handle_two")
+#define CONFIRM_BUTTON_ON_BG_COLOR_SYM gensym("live_display_handle_two")
 #define CONFIRM_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
 
 // Pagination
 #define PAGINATION_ARROW_OFF_COLOR_HEX "#444444"
 #define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
 #define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+
+// Tabs
+#define TAB_PRESETS_UP_BG_COLOR_HEX "#181818"
+#define TAB_PRESETS_UP_TEXT_COLOR_HEX "#555555"
+#define TAB_PRESETS_ON_BG_COLOR_SYM gensym("live_display_handle_two")
+#define TAB_PRESETS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+#define TAB_FILTERS_UP_BG_COLOR_HEX "#181818"
+#define TAB_FILTERS_UP_TEXT_COLOR_HEX "#555555"
+#define TAB_FILTERS_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+#define TAB_FILTERS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+#define TAB_BAR_COLOR_HEX "#181818"
 
 /* Dimensions & Text */
 
@@ -109,6 +123,14 @@
 #define PAGINATION_ARROW_FONT "Menlo"
 #define PAGINATION_ARROW_FONT_SIZE 13
 #define PAGINATION_ARROW_PADDING 2
+
+// Tabs
+#define TAB_MARGIN 5;
+#define TAB_FONT_SIZE 9
+#define TAB_PADDING_X 5
+#define TAB_PADDING_Y 2.5
+#define TAB_PRESETS_TEXT "PRESETS"
+#define TAB_FILTERS_TEXT "FILTERS"
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -204,6 +226,9 @@ typedef struct _presetter {
     // Filters
     t_dictionary *j_filters;
     t_hashtab *j_applied_filters;
+
+    // Tabs
+    t_symbol *j_selected_tab;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -421,6 +446,8 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_patcher_path = presetter_get_patcher_path(p);
         p->j_filters = dictionary_new();
         p->j_applied_filters = hashtab_new(0);
+
+        p->j_selected_tab = gensym("presets");
 
         dictionary_read("filters.json", p->j_patcher_path, &p->j_filters);
 
@@ -1060,6 +1087,60 @@ void presetter_handle_rename(t_presetter *p) {
 // Element Bounds
 // -----------------------------------------------------------------------------
 
+bool presetter_generic_in_bounds(t_bounds *bounds, t_pt *pt) {
+    bool in_x = pt->x >= bounds->x && pt->x <= bounds->width + bounds->x;
+    bool in_y = pt->y >= bounds->y && pt->y <= bounds->height + bounds->y;
+
+    return in_x && in_y;
+}
+
+/* Tabs */
+
+void presetter_measure_tab(t_presetter *p, char *text, double *outwidth, double *outheight) {
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, TAB_FONT_SIZE);
+
+    double text_width;
+    double text_height;
+    jgraphics_text_measure(p->offscreen, text, &text_width, &text_height);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(p->offscreen, &extents);
+
+    *outwidth = text_width + TAB_PADDING_X * 2;
+    *outheight = extents.ascent + extents.descent + TAB_PADDING_Y * 2;
+}
+
+t_bounds presetter_get_presets_tab_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds bounds;
+    presetter_measure_tab(p, TAB_PRESETS_TEXT, &bounds.width, &bounds.height);
+    bounds.x = 0;
+    bounds.y = rect->height - bounds.height;
+    return bounds;
+}
+
+bool presetter_in_presets_tab_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
+t_bounds presetter_get_filters_tab_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds ptbounds = presetter_get_presets_tab_bounds(p, rect);
+
+    t_bounds bounds;
+    presetter_measure_tab(p, TAB_FILTERS_TEXT, &bounds.width, &bounds.height);
+    bounds.x = ptbounds.width;
+    bounds.y = rect->height - bounds.height;
+    return bounds;
+}
+
+bool presetter_in_filters_tab_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_filters_tab_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
+/* Write Buttons */
+
 void presetter_measure_button(t_presetter *p, char *text, double *outwidth, double *outheight) {
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(p->offscreen, BUTTON_FONT_SIZE);
@@ -1082,7 +1163,6 @@ t_bounds presetter_get_write_button_bounds(t_presetter *p, t_rect *rect) {
     presetter_measure_button(p, WRITE_BUTTON_TEXT, &bounds.width, &bounds.height);
     bounds.x = rect->width - bounds.width - WRITE_BUTTON_OFFSET_X;
     bounds.y = WRITE_BUTTON_OFFSET_Y;
-    presetter_measure_button(p, WRITE_BUTTON_TEXT, &bounds.width, &bounds.height);
     return bounds;
 }
 
@@ -1128,11 +1208,12 @@ bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 t_grid_dim presetter_get_grid_dim(t_presetter *p, t_rect *rect) {
     t_bounds pnbounds = presetter_get_preset_name_bounds(p, rect);
+    t_bounds ptbounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_grid_dim dim;
     dim.columns = (int)floor((rect->width - CELL_PADDING - GRID_OFFSET_X) / CELL_TOTAL_SIZE);
 
-    double grid_y_pos = PRESET_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y;
+    double grid_y_pos = PRESET_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y + ptbounds.height + TAB_MARGIN;
     double grid_space = rect->height - grid_y_pos - p->j_status_height - STATUS_OFFSET_Y - CELL_PADDING;
     dim.rows = (int)floor(grid_space / CELL_TOTAL_SIZE);
     if (dim.rows < 0)
@@ -1445,6 +1526,18 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
     if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_pagination_number > 1) {
         p->j_pagination_left_arrow_down = true;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (presetter_in_presets_tab_bounds(p, &rect, &pt)) {
+        p->j_selected_tab = gensym("presets");
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (presetter_in_filters_tab_bounds(p, &rect, &pt)) {
+        p->j_selected_tab = gensym("filters");
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1823,9 +1916,10 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     }
 
     t_jrgba color;
+    t_jrgba color_off;
 
     if (p->j_status_override != PRESETTER_NO_STATUS) {
-        presetter_hex_to_rgba(&color, STATUS_CONFIRM_TEXT_COLOR_HEX, 1);
+        jcolor_getcolor(STATUS_CONFIRM_TEXT_COLOR_SYM, &color, &color_off);
     } else {
         presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
     }
@@ -1843,15 +1937,16 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
     t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
 
     t_jrgba bg_color;
+    t_jrgba bg_color_off;
     t_jrgba text_color;
     t_jrgba text_color_off;
 
     if (p->j_confirm_ok_button_down) {
-        presetter_hex_to_rgba(&bg_color, CONFIRM_BUTTON_ON_BG_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &text_color_off);
-        presetter_hex_to_rgba(&text_color, CONFIRM_BUTTON_UP_TEXT_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -1884,15 +1979,16 @@ void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect
     t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
 
     t_jrgba bg_color;
+    t_jrgba bg_color_off;
     t_jrgba text_color;
     t_jrgba text_color_off;
 
     if (p->j_confirm_cancel_button_down) {
-        presetter_hex_to_rgba(&bg_color, CONFIRM_BUTTON_ON_BG_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &text_color_off);
-        presetter_hex_to_rgba(&text_color, CONFIRM_BUTTON_UP_TEXT_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -1975,6 +2071,82 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     jgraphics_fill(g);
 }
 
+void presetter_draw_tab_bar(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
+
+    t_jrgba bg_color;
+    presetter_hex_to_rgba(&bg_color, TAB_BAR_COLOR_HEX, 1);
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, rect->width, bounds.height);
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_presets_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba bg_color_off;
+    t_jrgba text_color;
+    t_jrgba text_color_off;
+
+    if (p->j_selected_tab == gensym("presets")) {
+        jcolor_getcolor(TAB_PRESETS_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        jcolor_getcolor(TAB_PRESETS_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+    } else {
+        presetter_hex_to_rgba(&bg_color, TAB_PRESETS_UP_BG_COLOR_HEX, 1);
+        presetter_hex_to_rgba(&text_color, TAB_PRESETS_UP_TEXT_COLOR_HEX, 1);
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, TAB_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + TAB_PADDING_X, text_y);
+    jgraphics_text_path(g, TAB_PRESETS_TEXT);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_filters_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_filters_tab_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba text_color;
+    t_jrgba text_color_off;
+
+    if (p->j_selected_tab == gensym("filters")) {
+        presetter_hex_to_rgba(&bg_color, TAB_FILTERS_ON_BG_COLOR_HEX, 1);
+        jcolor_getcolor(TAB_FILTERS_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+    } else {
+        presetter_hex_to_rgba(&bg_color, TAB_FILTERS_UP_BG_COLOR_HEX, 1);
+        presetter_hex_to_rgba(&text_color, TAB_FILTERS_UP_TEXT_COLOR_HEX, 1);
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, TAB_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + TAB_PADDING_X, text_y);
+    jgraphics_text_path(g, TAB_FILTERS_TEXT);
+    jgraphics_fill(g);
+}
+
 /* Main Paint */
 
 void presetter_paint(t_presetter *p, t_object *patcherview) {
@@ -2001,4 +2173,8 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     presetter_draw_right_arrow(p, g, &rect);
     presetter_draw_pagination_number(p, g, &rect);
     presetter_draw_left_arrow(p, g, &rect);
+
+    presetter_draw_tab_bar(p, g, &rect);
+    presetter_draw_presets_tab(p, g, &rect);
+    presetter_draw_filters_tab(p, g, &rect);
 }
