@@ -1275,10 +1275,6 @@ void presetter_handle_preset_rename(t_presetter *p) {
     jbox_redraw((t_jbox *)p);
 }
 
-void presetter_handle_filter_rename(t_presetter *p) {
-    presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name));
-}
-
 // -----------------------------------------------------------------------------
 // Element Bounds
 // -----------------------------------------------------------------------------
@@ -2068,6 +2064,8 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
         if (keycode == -4) {
             if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
                 dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+                p->j_editing_filter_name = false;
+                p->j_write_filter_button_down = false;
                 jbox_redraw((t_jbox *)p);
                 return 1;
             }
@@ -2161,7 +2159,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
         snprintf_zero(visible, sizeof(visible), "%s%s", prefix, content);
         jgraphics_text_measure(g, visible, &text_width, &text_height);
-    } else if ((p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
+    } else if (!(p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
         snprintf_zero(visible, sizeof(visible), "%s", text);
 
         char with_ellipsis[512];
@@ -2620,7 +2618,8 @@ void presetter_draw_filter_grid_row(
         jgraphics_fill(g);
 
         t_jrgba stroke_color;
-        presetter_hex_to_rgba(&stroke_color, "#888888", 1);
+        t_jrgba stroke_color_off;
+        jcolor_getcolor(gensym("live_arranger_grid_tiles"), &stroke_color, &stroke_color_off);
 
         t_symbol *name = NULL;
         t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
@@ -2658,9 +2657,12 @@ void presetter_draw_filter_grid_row(
             hashtab_lookuplong(p->j_applied_filters, presetter_long_to_sym(cell_idx), &val);
 
             t_jrgba text_color;
+            t_jrgba text_color_off;
 
             if (val) {
                 presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            } else if (p->j_selected_filter_cell == cell_idx) {
+                jcolor_getcolor(gensym("live_arranger_grid_tiles"), &text_color, &text_color_off);
             } else {
                 presetter_hex_to_rgba(&text_color, "#888888", 1);
             }
@@ -2676,9 +2678,12 @@ void presetter_draw_filter_grid_row(
             jgraphics_fill(g);
 
             t_jrgba circle_color;
+            t_jrgba circle_color_off;
 
             if (val) {
                 presetter_hex_to_rgba(&circle_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            } else if (p->j_selected_filter_cell == cell_idx) {
+                jcolor_getcolor(gensym("live_arranger_grid_tiles"), &circle_color, &circle_color_off);
             } else {
                 presetter_hex_to_rgba(&circle_color, "#888888", 1);
             }
