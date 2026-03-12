@@ -8,6 +8,7 @@
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "max_types.h"
+#include <stdlib.h>
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -163,6 +164,11 @@ typedef enum {
     PRESETTER_HOVER_STATUS,
     PRESETTER_CONFIRM_STATUS
 } t_status;
+
+typedef struct _t_filter_result {
+    t_dictionary *dict;
+    t_symbol *index;
+} t_filter_result;
 
 typedef struct _presetter {
     // Base
@@ -401,6 +407,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
     if (p) {
         long flags = 0 | JBOX_DRAWFIRSTIN | JBOX_GROWBOTH | JBOX_NODRAWBOX | JBOX_HILITE;
         jbox_new(&p->j_box, flags, argc, argv);
+        attr_dictionary_process(p, d);
 
         // Inlets
         p->j_box.b_firstin = (t_object *)p;
@@ -444,14 +451,18 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_pagination_right_arrow_down = false;
 
         p->j_patcher_path = presetter_get_patcher_path(p);
-        p->j_filters = dictionary_new();
+        t_dictionary *dict = dictionary_new();
+        p->j_filters = dict;
         p->j_applied_filters = hashtab_new(0);
 
         p->j_selected_tab = gensym("presets");
 
-        dictionary_read("filters.json", p->j_patcher_path, &p->j_filters);
+        if (dictionary_read("filters.json", p->j_patcher_path, &p->j_filters) != MAX_ERR_NONE) {
+            // dictionary_read vaporizes the passed in dictionary if the file
+            // doesn't exist. that is not good.
+            p->j_filters = dictionary_new();
+        }
 
-        attr_dictionary_process(p, d);
         jbox_ready(&p->j_box);
     }
 
@@ -466,7 +477,7 @@ void presetter_free(t_presetter *p) {
     }
     jgraphics_destroy(p->offscreen);
     jgraphics_surface_destroy(p->surface);
-    object_free(p->j_filters);
+    // object_free(p->j_filters);
 }
 
 // -----------------------------------------------------------------------------
@@ -494,16 +505,92 @@ t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
 
 /* Filter Dictionary Utilities */
 
-bool presetter_add_filter_sym(t_presetter *p, t_symbol *s) {
-    t_atomarray *arr = NULL;
-    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result) {
+    for (long i = 0; i < dictionary_getentrycount(p->j_filters); i++) {
+        char keystr[24];
+        snprintf_zero(keystr, sizeof(keystr), "%ld", i + 1);
+        t_symbol *key = gensym(keystr);
 
-    if (arr)
+        t_dictionary *obj = NULL;
+        dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
+
+        if (!obj) {
+            continue;
+        }
+
+        t_symbol *name = NULL;
+        dictionary_getsym(obj, gensym("name"), &name);
+
+        if (!name) {
+            continue;
+        }
+
+        if (name == s) {
+            result->dict = obj;
+            result->index = key;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+t_symbol *presetter_find_free_filter_slot(t_dictionary *d) {
+    char keystr[24];
+
+    for (long i = 0; i < dictionary_getentrycount(d) + 1; i++) {
+        snprintf_zero(keystr, sizeof(keystr), "%ld", i + 1);
+        t_symbol *key = gensym(keystr);
+        if (!dictionary_hasentry(d, key)) {
+            return key;
+        }
+    }
+
+    return NULL;
+}
+
+bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index) {
+    t_filter_result result;
+
+    if (presetter_find_filter_by_name(p, name, &result)) {
         return false;
+    }
 
-    arr = atomarray_new(0, NULL);
+    t_symbol *key;
 
-    if (dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) != MAX_ERR_NONE) {
+    if (index == 0) {
+        key = presetter_find_free_filter_slot(p->j_filters);
+
+        if (!key) {
+            return false;
+        }
+
+    } else {
+        char keystr[24];
+        snprintf_zero(keystr, sizeof(keystr), "%ld", index);
+        key = gensym(keystr);
+    }
+
+    t_dictionary *obj = NULL;
+    dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
+
+    if (obj) {
+        return false;
+    }
+
+    obj = dictionary_new();
+
+    if (dictionary_appenddictionary(p->j_filters, key, (t_object *)obj) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    t_atomarray *arr = atomarray_new(0, NULL);
+
+    if (dictionary_appendatomarray(obj, gensym("slots"), (t_object *)arr) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    if (dictionary_appendsym(obj, gensym("name"), name) != MAX_ERR_NONE) {
         return false;
     }
 
@@ -512,68 +599,94 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *s) {
 }
 
 bool presetter_rename_filter_sym(t_presetter *p, t_symbol *so, t_symbol *sn) {
-    if (!dictionary_hasentry(p->j_filters, so))
-        return false;
+    char keystr[24];
+    bool renamed = false;
 
-    if (dictionary_hasentry(p->j_filters, sn))
-        return false;
+    for (long i = 0; i < dictionary_getentrycount(p->j_filters); i++) {
+        snprintf_zero(keystr, sizeof(keystr), "%ld", i + 1);
+        t_symbol *key = gensym(keystr);
 
-    long argc;
-    t_atom *argv;
+        t_dictionary *obj = NULL;
+        dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
 
-    if (dictionary_copyatoms(p->j_filters, so, &argc, &argv) != MAX_ERR_NONE)
-        return false;
+        if (!obj) {
+            continue;
+        }
 
-    if (dictionary_appendatoms(p->j_filters, sn, argc, argv) != MAX_ERR_NONE) {
-        return false;
+        t_symbol *value = NULL;
+        dictionary_getsym(obj, gensym("name"), &value);
+
+        if (value == so) {
+            dictionary_appendsym(obj, gensym("name"), sn);
+            renamed = true;
+            break;
+        }
     }
 
-    if (dictionary_deleteentry(p->j_filters, so) != MAX_ERR_NONE) {
-        return false;
+    if (renamed) {
+        return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
     }
 
-    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
+    return false;
 }
 
 bool presetter_clear_filter_sym(t_presetter *p, t_symbol *s) {
-    t_atomarray *arr = NULL;
-    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+    t_filter_result result;
 
-    if (!arr)
+    if (!presetter_find_filter_by_name(p, s, &result)) {
         return false;
+    }
 
-    atomarray_clear(arr);
-    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
-}
-
-bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
     t_atomarray *arr = NULL;
-    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+    dictionary_getatomarray(result.dict, gensym("slots"), (t_object **)&arr);
 
     if (!arr) {
         return false;
     }
 
-    if (dictionary_deleteentry(p->j_filters, s) != MAX_ERR_NONE) {
+    atomarray_clear(arr);
+    return true;
+}
+
+bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
+    t_filter_result result;
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
         return false;
     }
 
-    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
+    if (dictionary_deleteentry(p->j_filters, result.index) == MAX_ERR_NONE) {
+        hashtab_clear(p->j_applied_filters);
+        return true;
+    }
+
+    return false;
 }
 
 bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+    t_filter_result result;
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
+        presetter_add_filter_sym(p, s, 0);
+    }
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
+        return false;
+    }
+
     t_atom a;
     atom_setlong(&a, slot);
 
     t_atomarray *arr = NULL;
-    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+    dictionary_getatomarray(result.dict, gensym("slots"), (t_object **)&arr);
 
     if (!arr) {
         arr = atomarray_new(1, &a);
-        if (!arr)
+        if (!arr) {
             return false;
+        }
 
-        if (dictionary_appendatomarray(p->j_filters, s, (t_object *)arr) != MAX_ERR_NONE) {
+        if (dictionary_appendatomarray(result.dict, gensym("slots"), (t_object *)arr) != MAX_ERR_NONE) {
             return false;
         }
 
@@ -583,7 +696,7 @@ bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     long size;
     t_atom *results;
 
-    if (MAX_ERR_NONE != atomarray_getatoms(arr, &size, &results)) {
+    if (atomarray_getatoms(arr, &size, &results) != MAX_ERR_NONE) {
         return false;
     }
 
@@ -600,8 +713,14 @@ bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
 }
 
 bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+    t_filter_result result;
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
+        return false;
+    }
+
     t_atomarray *arr = NULL;
-    dictionary_getatomarray(p->j_filters, s, (t_object **)&arr);
+    dictionary_getatomarray(result.dict, gensym("slots"), (t_object **)&arr);
 
     if (!arr) {
         return false;
@@ -634,27 +753,27 @@ bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
 }
 
 bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
-    if (!dictionary_hasentry(p->j_filters, s)) {
+    t_filter_result result;
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
         return false;
     }
 
-    hashtab_storelong(p->j_applied_filters, s, (t_atom_long) true);
-
-    return true;
+    return hashtab_storelong(p->j_applied_filters, result.index, (t_atom_long) true) == MAX_ERR_NONE;
 }
 
 bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
-    if (!dictionary_hasentry(p->j_filters, s)) {
+    t_filter_result result;
+
+    if (!presetter_find_filter_by_name(p, s, &result)) {
         return false;
     }
 
-    hashtab_delete(p->j_applied_filters, s);
-
-    return true;
+    return hashtab_delete(p->j_applied_filters, result.index) == MAX_ERR_NONE;
 }
 
-bool presetter_reset_filter_all(t_presetter *p) {
-    return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
+void presetter_reset_filter_all(t_presetter *p) {
+    hashtab_clear(p->j_applied_filters);
 }
 
 bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
@@ -677,10 +796,14 @@ bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
             break;
 
         t_symbol *key = kvs[i];
-        t_atomarray *arr = NULL;
-        dictionary_getatomarray(p->j_filters, key, (t_object **)&arr);
-        if (!arr)
+        t_dictionary *obj = NULL;
+        dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
+
+        if (!obj)
             continue;
+
+        t_atomarray *arr = NULL;
+        dictionary_getatomarray(obj, gensym("slots"), (t_object **)&arr);
 
         long ac = 0;
         t_atom *av = NULL;
@@ -881,7 +1004,7 @@ void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     if (atom_gettype(argv) != A_SYM)
         return;
 
-    if (presetter_add_filter_sym(p, atom_getsym(argv))) {
+    if (presetter_add_filter_sym(p, atom_getsym(argv), 0)) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
@@ -969,7 +1092,7 @@ void presetter_applyfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv)
     if (atom_gettype(argv) != A_SYM)
         return;
 
-    presetter_apply_filter_sym(p, atom_getsym(argv));
+    bool a = presetter_apply_filter_sym(p, atom_getsym(argv));
     jbox_redraw((t_jbox *)p);
 }
 
