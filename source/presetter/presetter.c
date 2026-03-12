@@ -522,6 +522,12 @@ void presetter_free(t_presetter *p) {
 // Utility Methods
 // -----------------------------------------------------------------------------
 
+t_symbol *presetter_long_to_sym(long i) {
+    char key[24];
+    snprintf_zero(key, sizeof(key), "%ld", index);
+    return gensym(key);
+}
+
 /* Redraw Utilities */
 
 void presetter_redraw_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *argv) {
@@ -541,9 +547,7 @@ void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha) {
 
 t_symbol *presetter_lookup_preset_slot(t_presetter *p, long index) {
     t_symbol *name = NULL;
-    char key[24];
-    snprintf_zero(key, sizeof(key), "%ld", index);
-    hashtab_lookup(p->j_slots, gensym(key), (t_object **)&name);
+    hashtab_lookup(p->j_slots, presetter_long_to_sym(index), (t_object **)&name);
     return name;
 }
 
@@ -559,10 +563,7 @@ void presetter_hashtab_clear_deferred(t_presetter *p, t_symbol *s, short arc, t_
 t_dictionary *presetter_lookup_filter_slot(t_presetter *p, long index) {
     t_dictionary *dict = NULL;
 
-    char key[24];
-    snprintf_zero(key, sizeof(key), "%ld", index);
-
-    dictionary_getdictionary(p->j_filters, gensym(key), (t_object **)&dict);
+    dictionary_getdictionary(p->j_filters, presetter_long_to_sym(index), (t_object **)&dict);
 
     return dict;
 }
@@ -699,10 +700,7 @@ bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
     }
 
     if (dictionary_deleteentry(p->j_filters, result.index) == MAX_ERR_NONE) {
-        char key[24];
-        snprintf_zero(key, sizeof(key), "%ld", p->j_selected_filter_cell);
-
-        if (result.index == gensym(key)) {
+        if (result.index == presetter_long_to_sym(p->j_selected_filter_cell)) {
             p->j_selected_filter_cell = -1;
         }
 
@@ -1043,9 +1041,7 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     if (name == gensym("(undefined)"))
         return;
 
-    char key[24];
-    snprintf_zero(key, sizeof(key), "%ld", index);
-    hashtab_store(p->j_slots, gensym(key), (t_object *)name);
+    hashtab_store(p->j_slots, presetter_long_to_sym(index), (t_object *)name);
 }
 
 /* Filters */
@@ -1774,11 +1770,8 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 dictionary_getsym(dict, gensym("name"), &name);
 
                 if (name) {
-                    post("! %d, %s", cell_idx, name->s_name);
                     long val = 0;
-                    char key[24];
-                    snprintf_zero(key, sizeof(key), "%ld", cell_idx);
-                    hashtab_lookuplong(p->j_applied_filters, gensym(key), &val);
+                    hashtab_lookuplong(p->j_applied_filters, presetter_long_to_sym(cell_idx), &val);
 
                     if (val) {
                         presetter_reset_filter_sym(p, name);
@@ -2525,9 +2518,7 @@ void presetter_draw_filter_grid_row(
             }
 
             long val = 0;
-            char key[24];
-            snprintf_zero(key, sizeof(key), "%ld", cell_idx);
-            hashtab_lookuplong(p->j_applied_filters, gensym(key), &val);
+            hashtab_lookuplong(p->j_applied_filters, presetter_long_to_sym(cell_idx), &val);
 
             t_jrgba text_color;
 
