@@ -503,6 +503,13 @@ t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
     return name;
 }
 
+void presetter_hashtab_clear_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *argv) {
+    if (p->j_applied_filters) {
+        hashtab_clear(p->j_applied_filters);
+    }
+    jbox_redraw((t_jbox *)p);
+}
+
 /* Filter Dictionary Utilities */
 
 bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result) {
@@ -594,7 +601,6 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index) {
         return false;
     }
 
-    hashtab_clear(p->j_applied_filters);
     return true;
 }
 
@@ -606,7 +612,6 @@ bool presetter_rename_filter_sym(t_presetter *p, t_symbol *so, t_symbol *sn) {
     }
 
     if (dictionary_appendsym(result.dict, gensym("name"), sn) == MAX_ERR_NONE) {
-        hashtab_clear(p->j_applied_filters);
         return true;
     }
 
@@ -639,7 +644,7 @@ bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
     }
 
     if (dictionary_deleteentry(p->j_filters, result.index) == MAX_ERR_NONE) {
-        hashtab_clear(p->j_applied_filters);
+        defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
         return true;
     }
 
@@ -1075,7 +1080,7 @@ void presetter_applyfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv)
     if (atom_gettype(argv) != A_SYM)
         return;
 
-    bool a = presetter_apply_filter_sym(p, atom_getsym(argv));
+    presetter_apply_filter_sym(p, atom_getsym(argv));
     jbox_redraw((t_jbox *)p);
 }
 
