@@ -599,32 +599,15 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index) {
 }
 
 bool presetter_rename_filter_sym(t_presetter *p, t_symbol *so, t_symbol *sn) {
-    char keystr[24];
-    bool renamed = false;
+    t_filter_result result;
 
-    for (long i = 0; i < dictionary_getentrycount(p->j_filters); i++) {
-        snprintf_zero(keystr, sizeof(keystr), "%ld", i + 1);
-        t_symbol *key = gensym(keystr);
-
-        t_dictionary *obj = NULL;
-        dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
-
-        if (!obj) {
-            continue;
-        }
-
-        t_symbol *value = NULL;
-        dictionary_getsym(obj, gensym("name"), &value);
-
-        if (value == so) {
-            dictionary_appendsym(obj, gensym("name"), sn);
-            renamed = true;
-            break;
-        }
+    if (!presetter_find_filter_by_name(p, so, &result)) {
+        return false;
     }
 
-    if (renamed) {
-        return hashtab_clear(p->j_applied_filters) == MAX_ERR_NONE;
+    if (dictionary_appendsym(result.dict, gensym("name"), sn) == MAX_ERR_NONE) {
+        hashtab_clear(p->j_applied_filters);
+        return true;
     }
 
     return false;
@@ -1019,7 +1002,7 @@ void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
     if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_SYM)
         return;
 
-    if (presetter_rename_filter_sym(p, atom_getsym(argv), atom_getsym(argv + 1)) == MAX_ERR_NONE) {
+    if (presetter_rename_filter_sym(p, atom_getsym(argv), atom_getsym(argv + 1))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         return;
     }
