@@ -136,7 +136,7 @@
 /** Filters **/
 
 #define FILTER_CELL_MIN_WIDTH 120
-#define FILTER_CELL_HEIGHT 18
+#define FILTER_CELL_HEIGHT 19
 #define FILTER_GRID_PADDING 5
 
 // -----------------------------------------------------------------------------
@@ -699,6 +699,14 @@ bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
     }
 
     if (dictionary_deleteentry(p->j_filters, result.index) == MAX_ERR_NONE) {
+        char key[24];
+        snprintf_zero(key, sizeof(key), "%ld", p->j_selected_filter_cell);
+
+        if (result.index == gensym(key)) {
+            p->j_selected_filter_cell = -1;
+        }
+
+        jbox_redraw((t_jbox *)p);
         defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
         return true;
     }
@@ -1092,11 +1100,9 @@ void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
 
     if (presetter_remove_filter_sym(p, atom_getsym(argv))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
         return;
     }
-
-    // jbox_redraw((t_jbox *)p);
-    defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
 }
 
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1108,11 +1114,9 @@ void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *arg
 
     if (presetter_set_filter_slot(p, atom_getsym(argv), atom_getlong(argv + 1))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        defer_low((t_object *)p, (method)presetter_redraw_deferred, NULL, 0, NULL);
         return;
     }
-
-    // jbox_redraw((t_jbox *)p);
-    defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
 }
 
 void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1434,7 +1438,7 @@ long presetter_get_preset_grid_offset(t_presetter *p, t_grid_dim *dim) {
     return (p->j_preset_pagination_number - 1) * dim->rows * dim->columns;
 }
 
-long presetter_get_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
+long presetter_get_preset_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
     t_cell_pos pos = presetter_get_preset_cell_pos(p, rect, pt);
 
@@ -1643,6 +1647,38 @@ t_cell_pos presetter_get_filter_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt)
     return pos;
 }
 
+long presetter_get_filter_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_cell_pos pos = presetter_get_filter_cell_pos(p, rect, pt);
+
+    t_bounds pgbounds = presetter_get_preset_grid_bounds(p, rect);
+    t_grid_dim dim;
+
+    dim.columns = (long)floor(rect->width / FILTER_CELL_MIN_WIDTH);
+    dim.rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
+
+    long offset = presetter_get_filter_grid_offset(p, dim.columns, dim.rows);
+    return (pos.x + dim.columns * pos.y + 1) + offset;
+}
+
+bool presetter_in_filter_circle_bounds(t_presetter *p, t_rect *rect, t_pt *pt, t_cell_pos *pos) {
+    t_bounds pgbounds = presetter_get_preset_grid_bounds(p, rect);
+
+    long columns = (long)floor(rect->width / FILTER_CELL_MIN_WIDTH);
+    if (columns == 0)
+        columns = 1;
+
+    double cell_width = (rect->width - 8.5 * 2 - (FILTER_GRID_PADDING * (columns - 1))) / columns;
+
+    double x = pos->x * (cell_width + FILTER_GRID_PADDING) + 8.5;
+    double y = pgbounds.y + 3 + pos->y * (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING);
+
+    double circle_x = x + 6;
+    double circle_y = y + ((double)FILTER_CELL_HEIGHT - 8) / 2;
+
+    // 8x8 hitbox (the circle's diameter)
+    return (pt->x >= circle_x && pt->x <= circle_x + 8 && pt->y >= circle_y && pt->y <= circle_y + 8);
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
@@ -1679,44 +1715,82 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     }
 
     if (presetter_in_grid_bounds(p, &rect, &pt)) {
-        long cell_idx = presetter_get_cell_idx(p, &rect, &pt);
+        if (p->j_selected_tab == gensym("presets")) {
+            long cell_idx = presetter_get_preset_cell_idx(p, &rect, &pt);
 
-        if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
-            !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
-            p->j_editing_preset_name = false;
-            p->j_confirm_delete = true;
-            p->j_confirm_cell = cell_idx;
-            p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
-            snprintf_zero(
-                p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Delete Preset %d?", cell_idx
-            );
-            jbox_redraw((t_jbox *)p);
-            return;
-        }
+            if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
+                !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
+                p->j_editing_preset_name = false;
+                p->j_confirm_delete = true;
+                p->j_confirm_cell = cell_idx;
+                p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
+                snprintf_zero(
+                    p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Delete Preset %d?",
+                    cell_idx
+                );
+                jbox_redraw((t_jbox *)p);
+                return;
+            }
 
-        if (modifiers & eLeftButton && !(modifiers & eShiftKey) &&
-            // Allow for interaction in unlocked patches
-            // !(modifiers & eCommandKey) &&
-            // !(modifiers & eControlKey) &&
-            !(modifiers & eAltKey)) {
-            presetter_clear_confirm(p);
-            presetter_handle_recall(p, cell_idx, true);
-            jbox_redraw((t_jbox *)p);
-            return;
-        }
+            if (modifiers & eLeftButton && !(modifiers & eShiftKey) &&
+                // Allow for interaction in unlocked patches
+                // !(modifiers & eCommandKey) &&
+                // !(modifiers & eControlKey) &&
+                !(modifiers & eAltKey)) {
+                presetter_clear_confirm(p);
+                presetter_handle_recall(p, cell_idx, true);
+                jbox_redraw((t_jbox *)p);
+                return;
+            }
 
-        if (modifiers & eLeftButton && modifiers & eShiftKey &&
-            // Allow for interaction in unlocked patches
-            // !(modifiers & eCommandKey) &&
-            // !(modifiers & eControlKey) &&
-            !(modifiers & eAltKey)) {
-            p->j_editing_preset_name = false;
-            p->j_confirm_store = true;
-            p->j_confirm_cell = cell_idx;
-            p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
-            snprintf_zero(
-                p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Store Preset %d?", cell_idx
-            );
+            if (modifiers & eLeftButton && modifiers & eShiftKey &&
+                // Allow for interaction in unlocked patches
+                // !(modifiers & eCommandKey) &&
+                // !(modifiers & eControlKey) &&
+                !(modifiers & eAltKey)) {
+                p->j_editing_preset_name = false;
+                p->j_confirm_store = true;
+                p->j_confirm_cell = cell_idx;
+                p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
+                snprintf_zero(
+                    p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Store Preset %d?",
+                    cell_idx
+                );
+                jbox_redraw((t_jbox *)p);
+                return;
+            }
+        } else {
+            t_cell_pos pos = presetter_get_filter_cell_pos(p, &rect, &pt);
+            long cell_idx = presetter_get_filter_cell_idx(p, &rect, &pt);
+
+            if (presetter_in_filter_circle_bounds(p, &rect, &pt, &pos)) {
+                t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
+
+                if (!dict) {
+                    return;
+                }
+
+                t_symbol *name = NULL;
+                dictionary_getsym(dict, gensym("name"), &name);
+
+                if (name) {
+                    post("! %d, %s", cell_idx, name->s_name);
+                    long val = 0;
+                    char key[24];
+                    snprintf_zero(key, sizeof(key), "%ld", cell_idx);
+                    hashtab_lookuplong(p->j_applied_filters, gensym(key), &val);
+
+                    if (val) {
+                        presetter_reset_filter_sym(p, name);
+                    } else {
+                        presetter_apply_filter_sym(p, name);
+                    }
+                }
+
+                return;
+            }
+
+            p->j_selected_filter_cell = cell_idx;
             jbox_redraw((t_jbox *)p);
             return;
         }
@@ -1838,18 +1912,8 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         }
     } else {
         if (presetter_in_grid_bounds(p, &rect, &pt)) {
-            t_cell_pos pos = presetter_get_filter_cell_pos(p, &rect, &pt);
-
-            if (pos.x >= 0 && pos.y >= 0) {
-                t_bounds pgbounds = presetter_get_preset_grid_bounds(p, &rect);
-                t_grid_dim dim;
-
-                dim.columns = (long)floor(rect.width / FILTER_CELL_MIN_WIDTH);
-                dim.rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
-
-                long offset = presetter_get_filter_grid_offset(p, dim.columns, dim.rows);
-                p->j_hovered_filter_cell = (pos.x + dim.columns * pos.y + 1) + offset;
-            }
+            long cell_idx = presetter_get_filter_cell_idx(p, &rect, &pt);
+            p->j_hovered_filter_cell = cell_idx;
         } else {
             p->j_filter_status = PRESETTER_IDLE_STATUS;
             p->j_hovered_filter_cell = -1;
@@ -1935,7 +1999,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         if (p->j_editing_filter_name) {
             snprintf_zero(text, sizeof(text), "> %s_", p->j_filter_name);
         } else {
-            if (p->j_preset_name[0] != '\0') {
+            if (p->j_filter_name[0] != '\0') {
                 snprintf_zero(text, sizeof(text), "%s", p->j_filter_name);
             } else {
                 snprintf_zero(text, sizeof(text), "%s", "No filter selected");
@@ -2416,7 +2480,7 @@ void presetter_draw_filter_grid_row(
 
         t_jrgba color;
         if (cell_idx == p->j_hovered_filter_cell) {
-            presetter_hex_to_rgba(&color, "#333333", 1);
+            presetter_hex_to_rgba(&color, "#2A2A2A", 1);
         } else {
             presetter_hex_to_rgba(&color, "#222222", 1);
         }
@@ -2425,58 +2489,86 @@ void presetter_draw_filter_grid_row(
         jgraphics_set_source_jrgba(g, &color);
         jgraphics_fill(g);
 
+        t_jrgba stroke_color;
+        presetter_hex_to_rgba(&stroke_color, "#888888", 1);
+
         t_symbol *name = NULL;
         t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
 
-        if (!dict) {
-            continue;
-        }
+        if (dict && dictionary_getsym(dict, gensym("name"), &name) == MAX_ERR_NONE && name) {
+            jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+            jgraphics_set_font_size(g, 10);
 
-        dictionary_getsym(dict, gensym("name"), &name);
+            double max_width = cell_width - 24;
+            double text_width;
+            double text_height;
+            char visible[1048];
+            char with_ellipsis[1048];
 
-        if (!name) {
-            continue;
-        }
+            jgraphics_text_measure(g, name->s_name, &text_width, &text_height);
 
-        jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-        jgraphics_set_font_size(g, 10);
-
-        double max_width = cell_width - 12;
-        double text_width;
-        double text_height;
-        char visible[1048];
-        char with_ellipsis[1048];
-
-        jgraphics_text_measure(g, name->s_name, &text_width, &text_height);
-
-        if (text_width > max_width) {
-            snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
-            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-
-            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-
-            while (text_width > max_width && strlen(visible) > 0) {
-                visible[strlen(visible) - 1] = '\0';
+            if (text_width > max_width) {
+                snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
                 snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+
                 jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+
+                while (text_width > max_width && strlen(visible) > 0) {
+                    visible[strlen(visible) - 1] = '\0';
+                    snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+                    jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+                }
+
+                snprintf_zero(visible, sizeof(visible), "%s...", visible);
+            } else {
+                snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
             }
 
-            snprintf_zero(visible, sizeof(visible), "%s...", visible);
-        } else {
-            snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
+            long val = 0;
+            char key[24];
+            snprintf_zero(key, sizeof(key), "%ld", cell_idx);
+            hashtab_lookuplong(p->j_applied_filters, gensym(key), &val);
+
+            t_jrgba text_color;
+
+            if (val) {
+                presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            } else {
+                presetter_hex_to_rgba(&text_color, "#888888", 1);
+            }
+
+            jgraphics_set_source_jrgba(g, &text_color);
+
+            t_jgraphics_font_extents extents;
+            jgraphics_font_extents(g, &extents);
+
+            double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
+            jgraphics_move_to(g, x + 18, text_y);
+            jgraphics_text_path(g, visible);
+            jgraphics_fill(g);
+
+            t_jrgba circle_color;
+
+            if (val) {
+                presetter_hex_to_rgba(&circle_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            } else {
+                presetter_hex_to_rgba(&circle_color, "#888888", 1);
+            }
+
+            jgraphics_set_source_jrgba(g, &circle_color);
+            jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
+            jgraphics_fill(g);
+
+            if (val) {
+                presetter_hex_to_rgba(&stroke_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            }
         }
 
-        t_jrgba text_color;
-        presetter_hex_to_rgba(&text_color, "#666666", 1);
-        jgraphics_set_source_jrgba(g, &text_color);
-
-        t_jgraphics_font_extents extents;
-        jgraphics_font_extents(g, &extents);
-
-        double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
-        jgraphics_move_to(g, x + 6, text_y);
-        jgraphics_text_path(g, visible);
-        jgraphics_fill(g);
+        if (p->j_selected_filter_cell == cell_idx) {
+            jgraphics_rectangle_rounded(g, x, y, cell_width, FILTER_CELL_HEIGHT, 5, 5);
+            jgraphics_set_source_jrgba(g, &stroke_color);
+            jgraphics_stroke(g);
+        }
     }
 }
 
