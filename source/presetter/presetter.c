@@ -8,7 +8,7 @@
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "max_types.h"
-#include <stdlib.h>
+#include <math.h>
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -85,11 +85,11 @@
 #define CELL_PADDING 3.5
 #define CELL_TOTAL_SIZE (CELL_SIZE + CELL_PADDING)
 
-// Preset Name
-#define PRESET_NAME_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
-#define PRESET_NAME_OFFSET_Y 9
-#define PRESET_NAME_MARGIN_RIGHT 4
-#define PRESET_NAME_FONT_SIZE 10
+// Write Name
+#define WRITE_NAME_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
+#define WRITE_NAME_OFFSET_Y 9
+#define WRITE_NAME_MARGIN_RIGHT 4
+#define WRITE_NAME_FONT_SIZE 10
 
 // Buttons
 #define BUTTON_FONT_SIZE 9
@@ -132,6 +132,12 @@
 #define TAB_PADDING_Y 2.5
 #define TAB_PRESETS_TEXT "PRESETS"
 #define TAB_FILTERS_TEXT "FILTERS"
+
+/** Filters **/
+
+#define FILTER_CELL_MIN_WIDTH 120
+#define FILTER_CELL_HEIGHT 18
+#define FILTER_GRID_PADDING 5
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -197,12 +203,12 @@ typedef struct _presetter {
     t_jgraphics *offscreen;
 
     // Cells
-    long j_hovered_cell;
-    long j_last_hovered_cell;
-    long j_selected_cell;
+    long j_hovered_preset_cell;
+    long j_last_hovered_preset_cell;
+    long j_selected_preset_cell;
 
     // Preset Name
-    bool j_editing_name;
+    bool j_editing_preset_name;
     char j_preset_name[512];
 
     // Write Button
@@ -210,11 +216,12 @@ typedef struct _presetter {
     bool j_write_button_down;
 
     // Status line
-    t_status j_status;
-    t_status j_status_override;
-    char j_idle_status_text[512];
-    char j_hover_status_text[1024];
-    char j_confirm_status_text[512];
+    t_status j_preset_status;
+    t_status j_preset_status_override;
+    char j_preset_idle_status_text[512];
+    char j_preset_hover_status_text[1024];
+    char j_preset_confirm_status_text[512];
+
     double j_status_height;
 
     // Confirm
@@ -225,16 +232,36 @@ typedef struct _presetter {
     bool j_confirm_cancel_button_down;
 
     // Pagination
-    long j_pagination_number;
+    long j_preset_pagination_number;
     bool j_pagination_left_arrow_down;
     bool j_pagination_right_arrow_down;
 
-    // Filters
+    // Tabs
+    t_symbol *j_selected_tab;
+
+    /** Filters **/
+
     t_dictionary *j_filters;
     t_hashtab *j_applied_filters;
 
-    // Tabs
-    t_symbol *j_selected_tab;
+    // Filter Name
+    bool j_editing_filter_name;
+    char j_filter_name[512];
+
+    // Cells
+    long j_hovered_filter_cell;
+    long j_last_hovered_filter_cell;
+    long j_selected_filter_cell;
+
+    // Status
+    t_status j_filter_status;
+    t_status j_filter_status_override;
+    char j_filter_idle_status_text[512];
+    char j_filter_hover_status_text[1024];
+    char j_filter_confirm_status_text[512];
+
+    // Pagination
+    long j_filter_pagination_number;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -352,7 +379,7 @@ void ext_main(void *r) {
     CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
-    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 255. 153.");
+    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 257. 158.");
 
     class_register(CLASS_BOX, c);
     s_presetter_class = c;
@@ -423,19 +450,19 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->offscreen = jgraphics_create(p->surface);
 
         // Grid
-        p->j_selected_cell = -1;
-        p->j_hovered_cell = -1;
-        p->j_last_hovered_cell = -2;
+        p->j_selected_preset_cell = -1;
+        p->j_hovered_preset_cell = -1;
+        p->j_last_hovered_preset_cell = -2;
 
         // Preset Name
-        p->j_editing_name = false;
+        p->j_editing_preset_name = false;
 
         // Write Button
         p->j_write_button_down = false;
 
         // Status
-        p->j_status = PRESETTER_NO_STATUS;
-        p->j_status_override = PRESETTER_NO_STATUS;
+        p->j_preset_status = PRESETTER_NO_STATUS;
+        p->j_preset_status_override = PRESETTER_NO_STATUS;
         presetter_init_status_dim(p);
 
         // Confirm
@@ -446,7 +473,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_confirm_cancel_button_down = false;
 
         // Pagination
-        p->j_pagination_number = 1;
+        p->j_preset_pagination_number = 1;
         p->j_pagination_left_arrow_down = false;
         p->j_pagination_right_arrow_down = false;
 
@@ -455,7 +482,18 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_filters = dict;
         p->j_applied_filters = hashtab_new(0);
 
-        p->j_selected_tab = gensym("presets");
+        p->j_selected_tab = gensym("filters");
+
+        p->j_selected_filter_cell = -1;
+        p->j_hovered_filter_cell = -1;
+        p->j_last_hovered_filter_cell = -1;
+
+        // Status
+        p->j_filter_status = PRESETTER_NO_STATUS;
+        p->j_filter_status_override = PRESETTER_NO_STATUS;
+
+        // Pagination
+        p->j_filter_pagination_number = 1;
 
         if (dictionary_read("filters.json", p->j_patcher_path, &p->j_filters) != MAX_ERR_NONE) {
             // dictionary_read vaporizes the passed in dictionary if the file
@@ -484,6 +522,12 @@ void presetter_free(t_presetter *p) {
 // Utility Methods
 // -----------------------------------------------------------------------------
 
+/* Redraw Utilities */
+
+void presetter_redraw_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *argv) {
+    jbox_redraw((t_jbox *)p);
+}
+
 /* Colors Utilities */
 
 void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha) {
@@ -495,7 +539,7 @@ void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha) {
 
 /* Hashtab Utilities */
 
-t_symbol *presetter_lookup_slot(t_presetter *p, long index) {
+t_symbol *presetter_lookup_preset_slot(t_presetter *p, long index) {
     t_symbol *name = NULL;
     char key[24];
     snprintf_zero(key, sizeof(key), "%ld", index);
@@ -511,6 +555,17 @@ void presetter_hashtab_clear_deferred(t_presetter *p, t_symbol *s, short arc, t_
 }
 
 /* Filter Dictionary Utilities */
+
+t_dictionary *presetter_lookup_filter_slot(t_presetter *p, long index) {
+    t_dictionary *dict = NULL;
+
+    char key[24];
+    snprintf_zero(key, sizeof(key), "%ld", index);
+
+    dictionary_getdictionary(p->j_filters, gensym(key), (t_object **)&dict);
+
+    return dict;
+}
 
 bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result) {
     for (long i = 0; i < dictionary_getentrycount(p->j_filters); i++) {
@@ -926,15 +981,17 @@ void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         return;
 
     long cell_idx = atom_getlong(argv);
-    t_symbol *slot = presetter_lookup_slot(p, cell_idx);
+    t_symbol *slot = presetter_lookup_preset_slot(p, cell_idx);
 
     if (slot) {
-        p->j_selected_cell = cell_idx;
+        p->j_selected_preset_cell = cell_idx;
         snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
 
-        snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Selected Preset %d", cell_idx);
+        snprintf_zero(
+            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d", cell_idx
+        );
 
-        p->j_status = PRESETTER_IDLE_STATUS;
+        p->j_preset_status = PRESETTER_IDLE_STATUS;
 
         t_atom a;
         atom_setlong(&a, cell_idx);
@@ -955,10 +1012,10 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     }
 
     if (atom_gettype(argv) == A_SYM && atom_getsym(argv) == gensym("done")) {
-        if (!presetter_lookup_slot(p, p->j_selected_cell)) {
-            p->j_selected_cell = -1;
+        if (!presetter_lookup_preset_slot(p, p->j_selected_preset_cell)) {
+            p->j_selected_preset_cell = -1;
             p->j_preset_name[0] = '\0';
-            p->j_status = PRESETTER_NO_STATUS;
+            p->j_preset_status = PRESETTER_NO_STATUS;
         }
         jbox_redraw((t_jbox *)p);
         return;
@@ -994,10 +1051,9 @@ void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 
     if (presetter_add_filter_sym(p, atom_getsym(argv), 0)) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        jbox_redraw((t_jbox *)p);
         return;
     }
-
-    jbox_redraw((t_jbox *)p);
 }
 
 void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1009,10 +1065,9 @@ void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
 
     if (presetter_rename_filter_sym(p, atom_getsym(argv), atom_getsym(argv + 1))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        jbox_redraw((t_jbox *)p);
         return;
     }
-
-    jbox_redraw((t_jbox *)p);
 }
 
 void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1040,7 +1095,8 @@ void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
         return;
     }
 
-    jbox_redraw((t_jbox *)p);
+    // jbox_redraw((t_jbox *)p);
+    defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
 }
 
 void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1055,7 +1111,8 @@ void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *arg
         return;
     }
 
-    jbox_redraw((t_jbox *)p);
+    // jbox_redraw((t_jbox *)p);
+    defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
 }
 
 void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -1115,17 +1172,19 @@ void presetter_handle_recall(t_presetter *p, long cell_idx, bool update_status) 
     if (!ps)
         return;
 
-    t_symbol *slot = presetter_lookup_slot(p, cell_idx);
+    t_symbol *slot = presetter_lookup_preset_slot(p, cell_idx);
 
     if (slot) {
-        p->j_selected_cell = cell_idx;
+        p->j_selected_preset_cell = cell_idx;
         snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
 
         if (update_status) {
-            snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Selected Preset %d", cell_idx);
+            snprintf_zero(
+                p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d", cell_idx
+            );
         }
 
-        p->j_status = PRESETTER_IDLE_STATUS;
+        p->j_preset_status = PRESETTER_IDLE_STATUS;
 
         t_atom a;
         atom_setlong(&a, cell_idx);
@@ -1140,8 +1199,8 @@ void presetter_handle_store(t_presetter *p, long cell_idx) {
     if (!ps)
         return;
 
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Stored Preset %d", cell_idx);
-    p->j_status = PRESETTER_IDLE_STATUS;
+    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Stored Preset %d", cell_idx);
+    p->j_preset_status = PRESETTER_IDLE_STATUS;
 
     t_atom a;
     atom_setlong(&a, cell_idx);
@@ -1157,12 +1216,12 @@ void presetter_handle_delete(t_presetter *p, long cell_idx) {
     if (!ps)
         return;
 
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Deleted Preset %d", cell_idx);
-    p->j_status = PRESETTER_IDLE_STATUS;
+    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Deleted Preset %d", cell_idx);
+    p->j_preset_status = PRESETTER_IDLE_STATUS;
 
-    if (p->j_selected_cell == cell_idx) {
+    if (p->j_selected_preset_cell == cell_idx) {
         p->j_preset_name[0] = '\0';
-        p->j_selected_cell = -1;
+        p->j_selected_preset_cell = -1;
     }
 
     t_atom a;
@@ -1173,16 +1232,19 @@ void presetter_handle_delete(t_presetter *p, long cell_idx) {
     jbox_redraw((t_jbox *)p);
 }
 
-void presetter_handle_rename(t_presetter *p) {
+void presetter_handle_preset_rename(t_presetter *p) {
     t_object *ps = presetter_find_pattrstorage(p);
     if (!ps)
         return;
 
-    snprintf_zero(p->j_idle_status_text, sizeof(p->j_idle_status_text), "Renamed Preset %d", p->j_selected_cell);
-    p->j_editing_name = false;
+    snprintf_zero(
+        p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Renamed Preset %d",
+        p->j_selected_preset_cell
+    );
+    p->j_editing_preset_name = false;
 
     t_atom args[2];
-    atom_setlong(&args[0], p->j_selected_cell);
+    atom_setlong(&args[0], p->j_selected_preset_cell);
     atom_setsym(&args[1], gensym(p->j_preset_name));
 
     object_method_typed(ps, gensym("slotname"), 2, args, NULL);
@@ -1288,9 +1350,9 @@ bool presetter_in_write_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 /* Preset Name Bounds */
 
-t_bounds presetter_get_preset_name_bounds(t_presetter *p, t_rect *rect) {
+t_bounds presetter_get_write_name_bounds(t_presetter *p, t_rect *rect) {
     jgraphics_select_font_face(p->offscreen, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(p->offscreen, PRESET_NAME_FONT_SIZE);
+    jgraphics_set_font_size(p->offscreen, WRITE_NAME_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(p->offscreen, &extents);
@@ -1298,16 +1360,15 @@ t_bounds presetter_get_preset_name_bounds(t_presetter *p, t_rect *rect) {
     t_bounds wbbounds = presetter_get_write_button_bounds(p, rect);
 
     t_bounds bounds;
-    bounds.x = PRESET_NAME_OFFSET_X;
-    bounds.y = PRESET_NAME_OFFSET_Y;
-    bounds.width =
-        rect->width - wbbounds.width - PRESET_NAME_OFFSET_X - WRITE_BUTTON_OFFSET_X - PRESET_NAME_MARGIN_RIGHT;
+    bounds.x = WRITE_NAME_OFFSET_X;
+    bounds.y = WRITE_NAME_OFFSET_Y;
+    bounds.width = rect->width - wbbounds.width - WRITE_NAME_OFFSET_X - WRITE_BUTTON_OFFSET_X - WRITE_NAME_MARGIN_RIGHT;
     bounds.height = extents.height;
     return bounds;
 }
 
 bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_preset_name_bounds(p, rect);
+    t_bounds bounds = presetter_get_write_name_bounds(p, rect);
 
     bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
     bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
@@ -1317,14 +1378,14 @@ bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 /* Grid Bounds */
 
-t_grid_dim presetter_get_grid_dim(t_presetter *p, t_rect *rect) {
-    t_bounds pnbounds = presetter_get_preset_name_bounds(p, rect);
+t_grid_dim presetter_get_preset_grid_dim(t_presetter *p, t_rect *rect) {
+    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
     t_bounds ptbounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_grid_dim dim;
     dim.columns = (int)floor((rect->width - CELL_PADDING - GRID_OFFSET_X) / CELL_TOTAL_SIZE);
 
-    double grid_y_pos = PRESET_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y + ptbounds.height + TAB_MARGIN;
+    double grid_y_pos = WRITE_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y + ptbounds.height + TAB_MARGIN;
     double grid_space = rect->height - grid_y_pos - p->j_status_height - STATUS_OFFSET_Y - CELL_PADDING;
     dim.rows = (int)floor(grid_space / CELL_TOTAL_SIZE);
     if (dim.rows < 0)
@@ -1333,11 +1394,11 @@ t_grid_dim presetter_get_grid_dim(t_presetter *p, t_rect *rect) {
     return dim;
 }
 
-t_bounds presetter_get_grid_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds pnbounds = presetter_get_preset_name_bounds(p, rect);
+t_bounds presetter_get_preset_grid_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
 
     t_bounds bounds;
-    t_grid_dim dim = presetter_get_grid_dim(p, rect);
+    t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
 
     bounds.x = GRID_OFFSET_X;
     bounds.y = pnbounds.y + pnbounds.height + GRID_OFFSET_Y;
@@ -1348,7 +1409,7 @@ t_bounds presetter_get_grid_bounds(t_presetter *p, t_rect *rect) {
 }
 
 bool presetter_in_grid_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_grid_bounds(p, rect);
+    t_bounds bounds = presetter_get_preset_grid_bounds(p, rect);
 
     bool in_x = pt->x >= bounds.x + CELL_PADDING && pt->x <= bounds.width + bounds.x;
     bool in_y = pt->y >= bounds.y + CELL_PADDING && pt->y <= bounds.height + bounds.y;
@@ -1358,8 +1419,8 @@ bool presetter_in_grid_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 /* Grid Utilities */
 
-t_cell_pos presetter_get_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_grid_bounds(p, rect);
+t_cell_pos presetter_get_preset_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_preset_grid_bounds(p, rect);
 
     t_cell_pos pos;
     double rel_x = pt->x - bounds.x - CELL_PADDING / 2;
@@ -1369,22 +1430,21 @@ t_cell_pos presetter_get_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt) {
     return pos;
 }
 
-long presetter_get_grid_offset(t_presetter *p, t_grid_dim *dim) {
-    return (p->j_pagination_number - 1) * dim->rows * dim->columns;
+long presetter_get_preset_grid_offset(t_presetter *p, t_grid_dim *dim) {
+    return (p->j_preset_pagination_number - 1) * dim->rows * dim->columns;
 }
 
 long presetter_get_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_grid_dim dim = presetter_get_grid_dim(p, rect);
-    t_cell_pos pos = presetter_get_cell_pos(p, rect, pt);
+    t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
+    t_cell_pos pos = presetter_get_preset_cell_pos(p, rect, pt);
 
-    return (pos.x + dim.columns * pos.y + 1) + presetter_get_grid_offset(p, &dim);
-    ;
+    return (pos.x + dim.columns * pos.y + 1) + presetter_get_preset_grid_offset(p, &dim);
 }
 
 /* Right Arrow Bounds */
 
 t_bounds presetter_get_right_arrow_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
 
     double text_width;
     double text_height;
@@ -1415,14 +1475,14 @@ bool presetter_in_right_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Pagination Number Bounds */
 
 t_bounds presetter_get_pagination_number_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
     t_bounds rabounds = presetter_get_right_arrow_bounds(p, rect);
 
     double text_width;
     double text_height;
 
     char number_text[16];
-    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_pagination_number);
+    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
 
     jgraphics_select_font_face(
         p->offscreen, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
@@ -1442,7 +1502,7 @@ t_bounds presetter_get_pagination_number_bounds(t_presetter *p, t_rect *rect) {
 /* Left Arrow Bounds */
 
 t_bounds presetter_get_left_arrow_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
     t_bounds pnbounds = presetter_get_pagination_number_bounds(p, rect);
 
     double text_width;
@@ -1474,7 +1534,7 @@ bool presetter_in_left_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Status Bounds */
 
 t_bounds presetter_get_status_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
     // t_bounds ra_bounds = presetter_get_right_arrow_bounds(p, rect);
     t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
 
@@ -1498,14 +1558,14 @@ bool presetter_in_preset_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Confirm Ok Button Bounds */
 
 t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds gbounds = presetter_get_grid_bounds(p, rect);
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
 
     double text_width;
     double text_height;
 
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(p->offscreen, 9);
-    jgraphics_text_measure(p->offscreen, p->j_confirm_status_text, &text_width, &text_height);
+    jgraphics_text_measure(p->offscreen, p->j_preset_confirm_status_text, &text_width, &text_height);
 
     t_bounds bounds;
     bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
@@ -1542,6 +1602,47 @@ bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_p
     return in_x && in_y;
 }
 
+/** Filters **/
+
+long presetter_get_filter_grid_offset(t_presetter *p, long cells_x, long cells_y) {
+    return (p->j_filter_pagination_number - 1) * cells_x * cells_y;
+}
+
+t_bounds presetter_get_filter_grid_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
+
+    t_bounds bounds;
+    t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
+
+    bounds.x = GRID_OFFSET_X;
+    bounds.y = pnbounds.y + pnbounds.height + GRID_OFFSET_Y;
+    bounds.width = dim.columns * CELL_TOTAL_SIZE + CELL_PADDING / 2;
+    bounds.height = dim.rows * CELL_TOTAL_SIZE + CELL_PADDING / 2;
+
+    return bounds;
+}
+
+t_cell_pos presetter_get_filter_cell_pos(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds pgbounds = presetter_get_preset_grid_bounds(p, rect);
+    t_cell_pos pos;
+
+    long columns = (long)floor(rect->width / FILTER_CELL_MIN_WIDTH);
+    long rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
+
+    if (columns == 0)
+        columns = 1;
+
+    if (rows == 0)
+        rows = 1;
+
+    double cell_width = (rect->width - 8.5 * 2 - (FILTER_GRID_PADDING * (columns - 1))) / columns;
+
+    pos.x = (pt->x - pgbounds.x - 8.5) / (cell_width);
+    pos.y = (pt->y - pgbounds.y - 3) / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING);
+
+    return pos;
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
@@ -1550,8 +1651,8 @@ void presetter_clear_confirm(t_presetter *p) {
     p->j_confirm_cell = -1;
     p->j_confirm_store = false;
     p->j_confirm_delete = false;
-    p->j_status_override = PRESETTER_NO_STATUS;
-    p->j_confirm_status_text[0] = '\0';
+    p->j_preset_status_override = PRESETTER_NO_STATUS;
+    p->j_preset_confirm_status_text[0] = '\0';
     p->j_confirm_ok_button_down = false;
     p->j_confirm_cancel_button_down = false;
 }
@@ -1561,8 +1662,8 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     jbox_get_rect_for_view((t_object *)p, patcherview, &rect);
 
     if (presetter_in_preset_name_bounds(p, &rect, &pt)) {
-        if (p->j_selected_cell != -1) {
-            p->j_editing_name = !p->j_editing_name;
+        if (p->j_selected_preset_cell != -1) {
+            p->j_editing_preset_name = !p->j_editing_preset_name;
             presetter_clear_confirm(p);
             jbox_redraw((t_jbox *)p);
         }
@@ -1570,7 +1671,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     }
 
     if (presetter_in_write_button_bounds(p, &rect, &pt)) {
-        if (p->j_editing_name) {
+        if (p->j_editing_preset_name) {
             p->j_write_button_down = true;
             jbox_redraw((t_jbox *)p);
             return;
@@ -1582,11 +1683,13 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
         if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
             !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
-            p->j_editing_name = false;
+            p->j_editing_preset_name = false;
             p->j_confirm_delete = true;
             p->j_confirm_cell = cell_idx;
-            p->j_status_override = PRESETTER_CONFIRM_STATUS;
-            snprintf_zero(p->j_confirm_status_text, sizeof(p->j_confirm_status_text), "Delete Preset %d?", cell_idx);
+            p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
+            snprintf_zero(
+                p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Delete Preset %d?", cell_idx
+            );
             jbox_redraw((t_jbox *)p);
             return;
         }
@@ -1607,17 +1710,20 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             // !(modifiers & eCommandKey) &&
             // !(modifiers & eControlKey) &&
             !(modifiers & eAltKey)) {
-            p->j_editing_name = false;
+            p->j_editing_preset_name = false;
             p->j_confirm_store = true;
             p->j_confirm_cell = cell_idx;
-            p->j_status_override = PRESETTER_CONFIRM_STATUS;
-            snprintf_zero(p->j_confirm_status_text, sizeof(p->j_confirm_status_text), "Store Preset %d?", cell_idx);
+            p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
+            snprintf_zero(
+                p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Store Preset %d?", cell_idx
+            );
             jbox_redraw((t_jbox *)p);
             return;
         }
     }
 
-    if ((p->j_confirm_store || p->j_confirm_delete) && p->j_confirm_status_text[0] != '\0' && p->j_confirm_cell != -1) {
+    if ((p->j_confirm_store || p->j_confirm_delete) && p->j_preset_confirm_status_text[0] != '\0' &&
+        p->j_confirm_cell != -1) {
         if (presetter_in_confirm_ok_button_bounds(p, &rect, &pt)) {
             p->j_confirm_ok_button_down = true;
         }
@@ -1635,7 +1741,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         return;
     }
 
-    if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_pagination_number > 1) {
+    if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_preset_pagination_number > 1) {
         p->j_pagination_left_arrow_down = true;
         jbox_redraw((t_jbox *)p);
         return;
@@ -1656,7 +1762,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
 void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers) {
     if (p->j_write_button_down) {
-        presetter_handle_rename(p);
+        presetter_handle_preset_rename(p);
         p->j_write_button_down = false;
         jbox_redraw((t_jbox *)p);
         return;
@@ -1681,14 +1787,14 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
 
     if (p->j_pagination_right_arrow_down) {
         p->j_pagination_right_arrow_down = false;
-        p->j_pagination_number = p->j_pagination_number + 1;
+        p->j_preset_pagination_number = p->j_preset_pagination_number + 1;
         jbox_redraw((t_jbox *)p);
         return;
     }
 
     if (p->j_pagination_left_arrow_down) {
         p->j_pagination_left_arrow_down = false;
-        p->j_pagination_number = p->j_pagination_number - 1;
+        p->j_preset_pagination_number = p->j_preset_pagination_number - 1;
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1698,39 +1804,67 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     t_rect rect;
     jbox_get_rect_for_view((t_object *)p, patcherview, &rect);
 
-    if (presetter_in_grid_bounds(p, &rect, &pt)) {
-        t_grid_dim dim = presetter_get_grid_dim(p, &rect);
-        t_cell_pos pos = presetter_get_cell_pos(p, &rect, &pt);
+    if (p->j_selected_tab == gensym("presets")) {
+        if (presetter_in_grid_bounds(p, &rect, &pt)) {
+            t_grid_dim dim = presetter_get_preset_grid_dim(p, &rect);
+            t_cell_pos pos = presetter_get_preset_cell_pos(p, &rect, &pt);
 
-        p->j_hovered_cell = (pos.x + dim.columns * pos.y + 1) + presetter_get_grid_offset(p, &dim);
+            p->j_hovered_preset_cell = (pos.x + dim.columns * pos.y + 1) + presetter_get_preset_grid_offset(p, &dim);
 
-        t_symbol *name = presetter_lookup_slot(p, p->j_hovered_cell);
+            t_symbol *name = presetter_lookup_preset_slot(p, p->j_hovered_preset_cell);
 
-        if (name && name != gensym("<(unnamed)>")) {
-            snprintf_zero(
-                p->j_hover_status_text, sizeof(p->j_hover_status_text), "Preset %d: %s", p->j_hovered_cell, name->s_name
-            );
+            if (name && name != gensym("<(unnamed)>")) {
+                snprintf_zero(
+                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %d: %s",
+                    p->j_hovered_preset_cell, name->s_name
+                );
+            } else {
+                snprintf_zero(
+                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %d",
+                    p->j_hovered_preset_cell
+                );
+            }
+
+            if (p->j_preset_status == PRESETTER_HOVER_STATUS ||
+                p->j_hovered_preset_cell != p->j_last_hovered_preset_cell) {
+                p->j_preset_status = PRESETTER_HOVER_STATUS;
+            }
+
+            p->j_last_hovered_preset_cell = p->j_hovered_preset_cell;
         } else {
-            snprintf_zero(p->j_hover_status_text, sizeof(p->j_hover_status_text), "Preset %d", p->j_hovered_cell);
+            p->j_preset_status = PRESETTER_IDLE_STATUS;
+            p->j_hovered_preset_cell = -1;
+            p->j_last_hovered_preset_cell = -2;
         }
-
-        if (p->j_status == PRESETTER_HOVER_STATUS || p->j_hovered_cell != p->j_last_hovered_cell) {
-            p->j_status = PRESETTER_HOVER_STATUS;
-        }
-
-        p->j_last_hovered_cell = p->j_hovered_cell;
     } else {
-        p->j_status = PRESETTER_IDLE_STATUS;
-        p->j_hovered_cell = -1;
-        p->j_last_hovered_cell = -2;
+        if (presetter_in_grid_bounds(p, &rect, &pt)) {
+            t_cell_pos pos = presetter_get_filter_cell_pos(p, &rect, &pt);
+
+            if (pos.x >= 0 && pos.y >= 0) {
+                t_bounds pgbounds = presetter_get_preset_grid_bounds(p, &rect);
+                t_grid_dim dim;
+
+                dim.columns = (long)floor(rect.width / FILTER_CELL_MIN_WIDTH);
+                dim.rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
+
+                long offset = presetter_get_filter_grid_offset(p, dim.columns, dim.rows);
+                p->j_hovered_filter_cell = (pos.x + dim.columns * pos.y + 1) + offset;
+            }
+        } else {
+            p->j_filter_status = PRESETTER_IDLE_STATUS;
+            p->j_hovered_filter_cell = -1;
+            p->j_last_hovered_filter_cell = -2;
+        }
     }
 
     jbox_redraw((t_jbox *)p);
 }
 
 void presetter_mouseleave(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers) {
-    p->j_hovered_cell = -1;
-    p->j_last_hovered_cell = -2;
+    p->j_hovered_preset_cell = -1;
+    p->j_last_hovered_preset_cell = -2;
+    p->j_hovered_filter_cell = -1;
+    p->j_last_hovered_filter_cell = -2;
     jbox_redraw((t_jbox *)p);
 }
 
@@ -1739,7 +1873,7 @@ void presetter_mouseleave(t_presetter *p, t_object *patcherview, t_pt pt, long m
 //------------------------------------------------------------------------------
 
 long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long modifiers, long textcharacter) {
-    if (p->j_editing_name) {
+    if (p->j_editing_preset_name) {
         size_t len = strlen(p->j_preset_name);
 
         // Backspace
@@ -1751,13 +1885,13 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 
         // Enter / Return
         if (keycode == -4) {
-            presetter_handle_rename(p);
+            presetter_handle_preset_rename(p);
             return 1;
         }
 
         // Escape
         if (keycode == -3) {
-            p->j_editing_name = false;
+            p->j_editing_preset_name = false;
             jbox_redraw((t_jbox *)p);
             return 1;
         }
@@ -1780,25 +1914,37 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 // Drawing
 //------------------------------------------------------------------------------
 
-/* Preset Name */
+/* Write Name */
 
-void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    t_bounds bounds = presetter_get_preset_name_bounds(p, rect);
+void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_write_name_bounds(p, rect);
 
     char text[512];
 
-    if (p->j_editing_name) {
-        snprintf_zero(text, sizeof(text), "> %s_", p->j_preset_name);
-    } else {
-        if (p->j_preset_name[0] != '\0') {
-            snprintf_zero(text, sizeof(text), "%s", p->j_preset_name);
+    if (p->j_selected_tab == gensym("presets")) {
+        if (p->j_editing_preset_name) {
+            snprintf_zero(text, sizeof(text), "> %s_", p->j_preset_name);
         } else {
-            snprintf_zero(text, sizeof(text), "%s", "No preset selected");
+            if (p->j_preset_name[0] != '\0') {
+                snprintf_zero(text, sizeof(text), "%s", p->j_preset_name);
+            } else {
+                snprintf_zero(text, sizeof(text), "%s", "No preset selected");
+            }
+        }
+    } else {
+        if (p->j_editing_filter_name) {
+            snprintf_zero(text, sizeof(text), "> %s_", p->j_filter_name);
+        } else {
+            if (p->j_preset_name[0] != '\0') {
+                snprintf_zero(text, sizeof(text), "%s", p->j_filter_name);
+            } else {
+                snprintf_zero(text, sizeof(text), "%s", "No filter selected");
+            }
         }
     }
 
     jgraphics_select_font_face(g, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, PRESET_NAME_FONT_SIZE);
+    jgraphics_set_font_size(g, WRITE_NAME_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
@@ -1810,7 +1956,7 @@ void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     jgraphics_text_measure(g, text, &text_width, &text_height);
 
-    if (p->j_editing_name && text_width > max_width) {
+    if (p->j_editing_preset_name && text_width > max_width) {
         const char *prefix = "> ";
 
         double prefix_width;
@@ -1831,7 +1977,7 @@ void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
         snprintf_zero(visible, sizeof(visible), "%s%s", prefix, content);
         jgraphics_text_measure(g, visible, &text_width, &text_height);
-    } else if (!p->j_editing_name && text_width > max_width) {
+    } else if (!p->j_editing_preset_name && text_width > max_width) {
         snprintf_zero(visible, sizeof(visible), "%s", text);
 
         char with_ellipsis[512];
@@ -1850,7 +1996,7 @@ void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     }
 
     // Draw editing background
-    if (p->j_editing_name) {
+    if (p->j_editing_preset_name) {
         t_jrgba bg_color;
         t_jrgba _bg_color_off;
 
@@ -1868,7 +2014,7 @@ void presetter_draw_preset_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba _name_color_off;
 
     if (p->j_preset_name[0] != '\0') {
-        if (p->j_editing_name) {
+        if (p->j_editing_preset_name) {
             jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
         } else {
             jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
@@ -1897,7 +2043,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
 
-    } else if (p->j_editing_name) {
+    } else if (p->j_editing_preset_name) {
         jcolor_getcolor(WRITE_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(WRITE_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
 
@@ -1931,19 +2077,19 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
 /* Grid */
 
-void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row_idx, double y) {
+void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row_idx, double y) {
     for (int i = 0; i < dim->columns; i++) {
         double x = (double)i * CELL_TOTAL_SIZE + CELL_PADDING + GRID_OFFSET_X;
-        int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_grid_offset(p, dim);
+        int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_preset_grid_offset(p, dim);
 
         t_jrgba color;
-        t_symbol *name = presetter_lookup_slot(p, cell_idx);
+        t_symbol *name = presetter_lookup_preset_slot(p, cell_idx);
         bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
 
-        if (p->j_selected_cell == cell_idx) {
+        if (p->j_selected_preset_cell == cell_idx) {
             t_jrgba color_off;
             jcolor_getcolor(GRID_SELECTED_CELL_COLOR_SYM, &color, &color_off);
-        } else if (p->j_hovered_cell == cell_idx) {
+        } else if (p->j_hovered_preset_cell == cell_idx) {
             presetter_hex_to_rgba(&color, GRID_HOVERED_CELL_COLOR_HEX, 1);
         } else if (filtered_cell) {
             t_jrgba color_off;
@@ -1957,7 +2103,7 @@ void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
         jgraphics_set_source_jrgba(g, &color);
 
-        if (filtered_cell && p->j_selected_cell != cell_idx) {
+        if (filtered_cell && p->j_selected_preset_cell != cell_idx) {
             jgraphics_fill_with_alpha(g, filtered_cell ? .5 : 1);
         }
 
@@ -1965,27 +2111,28 @@ void presetter_draw_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row
     }
 }
 
-void presetter_draw_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    t_bounds bounds = presetter_get_grid_bounds(p, rect);
+void presetter_draw_preset_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_preset_grid_bounds(p, rect);
+    t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
 
-    t_grid_dim dim = presetter_get_grid_dim(p, rect);
     for (int i = 0; i < dim.rows; i++) {
         double y = (double)i * CELL_TOTAL_SIZE + CELL_PADDING + bounds.y;
-        presetter_draw_row(p, g, &dim, i, y);
+        presetter_draw_preset_grid_row(p, g, &dim, i, y);
     }
 }
 
 /* Status */
 
 const char *presetter_get_status_text(t_presetter *p) {
-    t_status effective = (p->j_status_override != PRESETTER_NO_STATUS) ? p->j_status_override : p->j_status;
+    t_status effective =
+        (p->j_preset_status_override != PRESETTER_NO_STATUS) ? p->j_preset_status_override : p->j_preset_status;
 
-    if (effective == PRESETTER_IDLE_STATUS && p->j_idle_status_text[0] != '\0')
-        return p->j_idle_status_text;
-    if (effective == PRESETTER_HOVER_STATUS && p->j_hover_status_text[0] != '\0')
-        return p->j_hover_status_text;
-    if (effective == PRESETTER_CONFIRM_STATUS && p->j_confirm_status_text[0] != '\0')
-        return p->j_confirm_status_text;
+    if (effective == PRESETTER_IDLE_STATUS && p->j_preset_idle_status_text[0] != '\0')
+        return p->j_preset_idle_status_text;
+    if (effective == PRESETTER_HOVER_STATUS && p->j_preset_hover_status_text[0] != '\0')
+        return p->j_preset_hover_status_text;
+    if (effective == PRESETTER_CONFIRM_STATUS && p->j_preset_confirm_status_text[0] != '\0')
+        return p->j_preset_confirm_status_text;
 
     return "Ready";
 }
@@ -2029,7 +2176,7 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba color;
     t_jrgba color_off;
 
-    if (p->j_status_override != PRESETTER_NO_STATUS) {
+    if (p->j_preset_status_override != PRESETTER_NO_STATUS) {
         jcolor_getcolor(STATUS_CONFIRM_TEXT_COLOR_SYM, &color, &color_off);
     } else {
         presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
@@ -2042,7 +2189,7 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 }
 
 void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
+    if (p->j_preset_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
         return;
 
     t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
@@ -2084,7 +2231,7 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
 }
 
 void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
+    if (p->j_preset_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
         return;
 
     t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
@@ -2154,7 +2301,7 @@ void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *re
     jgraphics_set_font_size(g, PAGINATION_NUMBER_FONT_SIZE);
 
     char number_text[16];
-    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_pagination_number);
+    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
 
     jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
     jgraphics_text_path(g, number_text);
@@ -2167,7 +2314,7 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba color;
     if (p->j_pagination_left_arrow_down) {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
-    } else if (p->j_pagination_number > 1) {
+    } else if (p->j_preset_pagination_number > 1) {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
     } else {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_OFF_COLOR_HEX, 1);
@@ -2258,6 +2405,103 @@ void presetter_draw_filters_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     jgraphics_fill(g);
 }
 
+/** Filters **/
+
+void presetter_draw_filter_grid_row(
+    t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row_idx, double cell_width, double y
+) {
+    for (int i = 0; i < dim->columns; i++) {
+        double x = (double)i * (cell_width + FILTER_GRID_PADDING) + 8.5;
+        int cell_idx = (i + dim->columns * row_idx + 1); // + presetter_get_filter_grid_offset(p, dim);
+
+        t_jrgba color;
+        if (cell_idx == p->j_hovered_filter_cell) {
+            presetter_hex_to_rgba(&color, "#333333", 1);
+        } else {
+            presetter_hex_to_rgba(&color, "#222222", 1);
+        }
+
+        jgraphics_rectangle_rounded(g, x, y, cell_width, FILTER_CELL_HEIGHT, 5, 5);
+        jgraphics_set_source_jrgba(g, &color);
+        jgraphics_fill(g);
+
+        t_symbol *name = NULL;
+        t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
+
+        if (!dict) {
+            continue;
+        }
+
+        dictionary_getsym(dict, gensym("name"), &name);
+
+        if (!name) {
+            continue;
+        }
+
+        jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+        jgraphics_set_font_size(g, 10);
+
+        double max_width = cell_width - 12;
+        double text_width;
+        double text_height;
+        char visible[1048];
+        char with_ellipsis[1048];
+
+        jgraphics_text_measure(g, name->s_name, &text_width, &text_height);
+
+        if (text_width > max_width) {
+            snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
+            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+
+            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+
+            while (text_width > max_width && strlen(visible) > 0) {
+                visible[strlen(visible) - 1] = '\0';
+                snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+                jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+            }
+
+            snprintf_zero(visible, sizeof(visible), "%s...", visible);
+        } else {
+            snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
+        }
+
+        t_jrgba text_color;
+        presetter_hex_to_rgba(&text_color, "#666666", 1);
+        jgraphics_set_source_jrgba(g, &text_color);
+
+        t_jgraphics_font_extents extents;
+        jgraphics_font_extents(g, &extents);
+
+        double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
+        jgraphics_move_to(g, x + 6, text_y);
+        jgraphics_text_path(g, visible);
+        jgraphics_fill(g);
+    }
+}
+
+void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_grid_dim dim;
+    t_bounds pgbounds = presetter_get_preset_grid_bounds(p, rect);
+
+    dim.columns = (long)floor(rect->width / FILTER_CELL_MIN_WIDTH);
+    if (dim.columns == 0) {
+        dim.columns = 1;
+    }
+
+    dim.rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
+    if (dim.rows == 0) {
+        dim.rows = 1;
+    }
+
+    double cell_width = (rect->width - 8.5 * 2 - (FILTER_GRID_PADDING * (dim.columns - 1))) / dim.columns;
+
+    for (int i = 0; i < dim.rows; i++) {
+        double y = pgbounds.y + 3 + i * (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING);
+        presetter_draw_filter_grid_row(p, g, &dim, i, cell_width, y);
+    }
+}
+
 /* Main Paint */
 
 void presetter_paint(t_presetter *p, t_object *patcherview) {
@@ -2273,14 +2517,18 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_fill(g);
 
-    presetter_draw_preset_name(p, g, &rect);
+    presetter_draw_write_name(p, g, &rect);
     presetter_draw_write_button(p, g, &rect);
-    presetter_draw_grid(p, g, &rect);
+
+    if (p->j_selected_tab == gensym("presets")) {
+        presetter_draw_preset_grid(p, g, &rect);
+        presetter_draw_confirm_ok_button(p, g, &rect);
+        presetter_draw_confirm_cancel_button(p, g, &rect);
+    } else {
+        presetter_draw_filter_grid(p, g, &rect);
+    }
+
     presetter_draw_status(p, g, &rect);
-
-    presetter_draw_confirm_ok_button(p, g, &rect);
-    presetter_draw_confirm_cancel_button(p, g, &rect);
-
     presetter_draw_right_arrow(p, g, &rect);
     presetter_draw_pagination_number(p, g, &rect);
     presetter_draw_left_arrow(p, g, &rect);
