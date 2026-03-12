@@ -98,6 +98,7 @@
 
 // Write Button
 #define WRITE_BUTTON_TEXT "WRITE NAME"
+#define WRITE_FILTER_BUTTON_TEXT "WRITE FILTER"
 #define WRITE_BUTTON_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
 #define WRITE_BUTTON_OFFSET_Y 8
 
@@ -247,6 +248,10 @@ typedef struct _presetter {
     // Filter Name
     bool j_editing_filter_name;
     char j_filter_name[512];
+
+    // Write Button
+    char *j_write_filter_button_text;
+    bool j_write_filter_button_down;
 
     // Cells
     long j_hovered_filter_cell;
@@ -524,7 +529,7 @@ void presetter_free(t_presetter *p) {
 
 t_symbol *presetter_long_to_sym(long i) {
     char key[24];
-    snprintf_zero(key, sizeof(key), "%ld", index);
+    snprintf_zero(key, sizeof(key), "%ld", i);
     return gensym(key);
 }
 
@@ -668,6 +673,20 @@ bool presetter_rename_filter_sym(t_presetter *p, t_symbol *so, t_symbol *sn) {
     }
 
     if (dictionary_appendsym(result.dict, gensym("name"), sn) == MAX_ERR_NONE) {
+        return true;
+    }
+
+    return false;
+}
+
+bool presetter_rename_filter_idx(t_presetter *p, long idx, t_symbol *sn) {
+    t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+    if (!dict) {
+        return false;
+    }
+
+    if (dictionary_appendsym(dict, gensym("name"), sn) == MAX_ERR_NONE) {
         return true;
     }
 
@@ -1167,7 +1186,7 @@ void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 // Callback Methods
 // -----------------------------------------------------------------------------
 
-void presetter_handle_recall(t_presetter *p, long cell_idx, bool update_status) {
+void presetter_handle_recall(t_presetter *p, long cell_idx) {
     t_object *ps = presetter_find_pattrstorage(p);
     if (!ps)
         return;
@@ -1176,13 +1195,13 @@ void presetter_handle_recall(t_presetter *p, long cell_idx, bool update_status) 
 
     if (slot) {
         p->j_selected_preset_cell = cell_idx;
+
         snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
 
-        if (update_status) {
-            snprintf_zero(
-                p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d", cell_idx
-            );
-        }
+        snprintf_zero(
+            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d",
+            p->j_selected_preset_cell
+        );
 
         p->j_preset_status = PRESETTER_IDLE_STATUS;
 
@@ -1254,6 +1273,10 @@ void presetter_handle_preset_rename(t_presetter *p) {
     outlet_bang(p->j_outlet1);
 
     jbox_redraw((t_jbox *)p);
+}
+
+void presetter_handle_filter_rename(t_presetter *p) {
+    presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name));
 }
 
 // -----------------------------------------------------------------------------
@@ -1341,23 +1364,26 @@ t_bounds presetter_get_write_button_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_write_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_write_button_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Preset Name Bounds */
 
-t_bounds presetter_get_write_name_bounds(t_presetter *p, t_rect *rect) {
+t_bounds presetter_get_write_filter_button_bounds(t_presetter *p, t_rect *rect);
+
+t_bounds presetter_get_name_bounds(t_presetter *p, t_rect *rect) {
     jgraphics_select_font_face(p->offscreen, "Menlo", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(p->offscreen, WRITE_NAME_FONT_SIZE);
 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(p->offscreen, &extents);
 
-    t_bounds wbbounds = presetter_get_write_button_bounds(p, rect);
+    t_bounds wbbounds;
+    if (p->j_selected_tab == gensym("presets")) {
+        wbbounds = presetter_get_write_button_bounds(p, rect);
+    } else {
+        wbbounds = presetter_get_write_filter_button_bounds(p, rect);
+    }
 
     t_bounds bounds;
     bounds.x = WRITE_NAME_OFFSET_X;
@@ -1367,8 +1393,8 @@ t_bounds presetter_get_write_name_bounds(t_presetter *p, t_rect *rect) {
     return bounds;
 }
 
-bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_write_name_bounds(p, rect);
+bool presetter_in_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_name_bounds(p, rect);
 
     bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
     bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
@@ -1379,7 +1405,7 @@ bool presetter_in_preset_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 /* Grid Bounds */
 
 t_grid_dim presetter_get_preset_grid_dim(t_presetter *p, t_rect *rect) {
-    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
+    t_bounds pnbounds = presetter_get_name_bounds(p, rect);
     t_bounds ptbounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_grid_dim dim;
@@ -1395,7 +1421,7 @@ t_grid_dim presetter_get_preset_grid_dim(t_presetter *p, t_rect *rect) {
 }
 
 t_bounds presetter_get_preset_grid_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
+    t_bounds pnbounds = presetter_get_name_bounds(p, rect);
 
     t_bounds bounds;
     t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
@@ -1609,7 +1635,7 @@ long presetter_get_filter_grid_offset(t_presetter *p, long cells_x, long cells_y
 }
 
 t_bounds presetter_get_filter_grid_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds pnbounds = presetter_get_write_name_bounds(p, rect);
+    t_bounds pnbounds = presetter_get_name_bounds(p, rect);
 
     t_bounds bounds;
     t_grid_dim dim = presetter_get_preset_grid_dim(p, rect);
@@ -1675,6 +1701,21 @@ bool presetter_in_filter_circle_bounds(t_presetter *p, t_rect *rect, t_pt *pt, t
     return (pt->x >= circle_x && pt->x <= circle_x + 8 && pt->y >= circle_y && pt->y <= circle_y + 8);
 }
 
+/* Write Button Bounds */
+
+t_bounds presetter_get_write_filter_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds bounds;
+    presetter_measure_button(p, WRITE_FILTER_BUTTON_TEXT, &bounds.width, &bounds.height);
+    bounds.x = rect->width - bounds.width - WRITE_BUTTON_OFFSET_X;
+    bounds.y = WRITE_BUTTON_OFFSET_Y;
+    return bounds;
+}
+
+bool presetter_in_write_filter_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_write_filter_button_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
@@ -1693,7 +1734,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
     t_rect rect;
     jbox_get_rect_for_view((t_object *)p, patcherview, &rect);
 
-    if (presetter_in_preset_name_bounds(p, &rect, &pt)) {
+    if (presetter_in_name_bounds(p, &rect, &pt) && p->j_selected_tab == gensym("presets")) {
         if (p->j_selected_preset_cell != -1) {
             p->j_editing_preset_name = !p->j_editing_preset_name;
             presetter_clear_confirm(p);
@@ -1702,9 +1743,26 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         return;
     }
 
-    if (presetter_in_write_button_bounds(p, &rect, &pt)) {
+    if (presetter_in_name_bounds(p, &rect, &pt) && p->j_selected_tab == gensym("filters")) {
+        if (p->j_selected_filter_cell != -1) {
+            p->j_editing_filter_name = !p->j_editing_filter_name;
+            presetter_clear_confirm(p);
+            jbox_redraw((t_jbox *)p);
+        }
+        return;
+    }
+
+    if (presetter_in_write_button_bounds(p, &rect, &pt) && p->j_selected_tab == gensym("presets")) {
         if (p->j_editing_preset_name) {
             p->j_write_button_down = true;
+            jbox_redraw((t_jbox *)p);
+            return;
+        }
+    }
+
+    if (presetter_in_write_button_bounds(p, &rect, &pt) && p->j_selected_tab == gensym("filters")) {
+        if (p->j_editing_filter_name) {
+            p->j_write_filter_button_down = true;
             jbox_redraw((t_jbox *)p);
             return;
         }
@@ -1734,7 +1792,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 // !(modifiers & eControlKey) &&
                 !(modifiers & eAltKey)) {
                 presetter_clear_confirm(p);
-                presetter_handle_recall(p, cell_idx, true);
+                presetter_handle_recall(p, cell_idx);
                 jbox_redraw((t_jbox *)p);
                 return;
             }
@@ -1784,7 +1842,24 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             }
 
             p->j_selected_filter_cell = cell_idx;
-            jbox_redraw((t_jbox *)p);
+
+            t_dictionary *dict = presetter_lookup_filter_slot(p, p->j_selected_filter_cell);
+            t_symbol *name = NULL;
+            dictionary_getsym(dict, gensym("name"), &name);
+
+            if (dict && name) {
+                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", name->s_name);
+
+                snprintf_zero(
+                    p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Selected Preset %d",
+                    p->j_selected_filter_cell
+                );
+
+                p->j_preset_status = PRESETTER_IDLE_STATUS;
+
+                jbox_redraw((t_jbox *)p);
+            }
+
             return;
         }
     }
@@ -1816,12 +1891,16 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
     if (presetter_in_presets_tab_bounds(p, &rect, &pt)) {
         p->j_selected_tab = gensym("presets");
+        p->j_editing_filter_name = false;
+        p->j_editing_preset_name = false;
         jbox_redraw((t_jbox *)p);
         return;
     }
 
     if (presetter_in_filters_tab_bounds(p, &rect, &pt)) {
         p->j_selected_tab = gensym("filters");
+        p->j_editing_filter_name = false;
+        p->j_editing_preset_name = false;
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1833,6 +1912,16 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
         p->j_write_button_down = false;
         jbox_redraw((t_jbox *)p);
         return;
+    }
+
+    if (p->j_write_filter_button_down) {
+        if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
+            dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+            p->j_editing_filter_name = false;
+            p->j_write_filter_button_down = false;
+            jbox_redraw((t_jbox *)p);
+            return;
+        }
     }
 
     if (p->j_confirm_ok_button_down) {
@@ -1930,7 +2019,7 @@ void presetter_mouseleave(t_presetter *p, t_object *patcherview, t_pt pt, long m
 //------------------------------------------------------------------------------
 
 long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long modifiers, long textcharacter) {
-    if (p->j_editing_preset_name) {
+    if (p->j_editing_preset_name && p->j_selected_tab == gensym("presets")) {
         size_t len = strlen(p->j_preset_name);
 
         // Backspace
@@ -1943,6 +2032,7 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
         // Enter / Return
         if (keycode == -4) {
             presetter_handle_preset_rename(p);
+            jbox_redraw((t_jbox *)p);
             return 1;
         }
 
@@ -1964,6 +2054,43 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
         return 0;
     }
 
+    if (p->j_editing_filter_name && p->j_selected_tab == gensym("filters")) {
+        size_t len = strlen(p->j_filter_name);
+
+        // Backspace
+        if (keycode == -7 && len > 0) {
+            p->j_filter_name[len - 1] = '\0';
+            jbox_redraw((t_jbox *)p);
+            return 1;
+        }
+
+        // Enter / Return
+        if (keycode == -4) {
+            if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
+                dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+                jbox_redraw((t_jbox *)p);
+                return 1;
+            }
+        }
+
+        // Escape
+        if (keycode == -3) {
+            p->j_editing_filter_name = false;
+            jbox_redraw((t_jbox *)p);
+            return 1;
+        }
+
+        // Printable characters
+        if (textcharacter >= 32 && textcharacter < 127 && len < sizeof(p->j_filter_name) - 1) {
+            p->j_filter_name[len] = (char)textcharacter;
+            p->j_filter_name[len + 1] = '\0';
+            jbox_redraw((t_jbox *)p);
+            return 1;
+        }
+
+        return 0;
+    }
+
     return 0;
 }
 
@@ -1974,7 +2101,7 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 /* Write Name */
 
 void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    t_bounds bounds = presetter_get_write_name_bounds(p, rect);
+    t_bounds bounds = presetter_get_name_bounds(p, rect);
 
     char text[512];
 
@@ -2013,7 +2140,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     jgraphics_text_measure(g, text, &text_width, &text_height);
 
-    if (p->j_editing_preset_name && text_width > max_width) {
+    if ((p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
         const char *prefix = "> ";
 
         double prefix_width;
@@ -2034,7 +2161,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
         snprintf_zero(visible, sizeof(visible), "%s%s", prefix, content);
         jgraphics_text_measure(g, visible, &text_width, &text_height);
-    } else if (!p->j_editing_preset_name && text_width > max_width) {
+    } else if ((p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
         snprintf_zero(visible, sizeof(visible), "%s", text);
 
         char with_ellipsis[512];
@@ -2053,7 +2180,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     }
 
     // Draw editing background
-    if (p->j_editing_preset_name) {
+    if (p->j_editing_preset_name || p->j_editing_filter_name) {
         t_jrgba bg_color;
         t_jrgba _bg_color_off;
 
@@ -2070,8 +2197,18 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba name_color;
     t_jrgba _name_color_off;
 
-    if (p->j_preset_name[0] != '\0') {
+    if (p->j_selected_tab == gensym("presets") && p->j_preset_name[0] != '\0') {
         if (p->j_editing_preset_name) {
+            jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
+        } else {
+            jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
+        }
+    } else {
+        presetter_hex_to_rgba(&name_color, PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX, 1);
+    }
+
+    if (p->j_selected_tab == gensym("filters") && p->j_filter_name[0] != '\0') {
+        if (p->j_editing_filter_name) {
             jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
         } else {
             jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
@@ -2096,7 +2233,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba bg_color_off;
     t_jrgba text_color_off;
 
-    if (p->j_write_button_down) {
+    if (p->j_write_filter_button_down) {
         jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
 
@@ -2111,7 +2248,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_write_button_down) {
+    if (!p->j_write_filter_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
@@ -2563,6 +2700,50 @@ void presetter_draw_filter_grid_row(
     }
 }
 
+void presetter_draw_write_filter_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_write_filter_button_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba text_color;
+    t_jrgba bg_color_off;
+    t_jrgba text_color_off;
+
+    if (p->j_write_filter_button_down) {
+        jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+
+    } else if (p->j_editing_filter_name) {
+        jcolor_getcolor(WRITE_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        jcolor_getcolor(WRITE_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
+
+    } else {
+        presetter_hex_to_rgba(&bg_color, WRITE_BUTTON_INACTIVE_BG_COLOR_HEX, 1);
+        presetter_hex_to_rgba(&text_color, WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX, 1);
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+
+    if (!p->j_write_button_down) {
+        jgraphics_set_source_jrgba(g, &text_color);
+        jgraphics_stroke_preserve(g);
+    }
+
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
+    jgraphics_text_path(g, WRITE_FILTER_BUTTON_TEXT);
+    jgraphics_fill(g);
+}
+
 void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_grid_dim dim;
     t_bounds pgbounds = presetter_get_preset_grid_bounds(p, rect);
@@ -2601,13 +2782,14 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     jgraphics_fill(g);
 
     presetter_draw_write_name(p, g, &rect);
-    presetter_draw_write_button(p, g, &rect);
 
     if (p->j_selected_tab == gensym("presets")) {
+        presetter_draw_write_button(p, g, &rect);
         presetter_draw_preset_grid(p, g, &rect);
         presetter_draw_confirm_ok_button(p, g, &rect);
         presetter_draw_confirm_cancel_button(p, g, &rect);
     } else {
+        presetter_draw_write_filter_button(p, g, &rect);
         presetter_draw_filter_grid(p, g, &rect);
     }
 
