@@ -1841,20 +1841,24 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
             t_dictionary *dict = presetter_lookup_filter_slot(p, p->j_selected_filter_cell);
             t_symbol *name = NULL;
-            dictionary_getsym(dict, gensym("name"), &name);
-
-            if (dict && name) {
-                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", name->s_name);
-
-                snprintf_zero(
-                    p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Selected Preset %d",
-                    p->j_selected_filter_cell
-                );
-
-                p->j_preset_status = PRESETTER_IDLE_STATUS;
-
-                jbox_redraw((t_jbox *)p);
+            if (dict) {
+                dictionary_getsym(dict, gensym("name"), &name);
             }
+
+            if (name) {
+                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", name->s_name);
+            } else {
+                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
+            }
+
+            snprintf_zero(
+                p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Selected Filter %d",
+                p->j_selected_filter_cell
+            );
+
+            p->j_preset_status = PRESETTER_IDLE_STATUS;
+
+            jbox_redraw((t_jbox *)p);
 
             return;
         }
@@ -1913,6 +1917,17 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
     if (p->j_write_filter_button_down) {
         if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
             dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+            p->j_editing_filter_name = false;
+            p->j_write_filter_button_down = false;
+            jbox_redraw((t_jbox *)p);
+            return;
+        } else if (p->j_filter_name[0] != '\0') {
+            presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
+            p->j_editing_filter_name = false;
+            p->j_write_filter_button_down = false;
+            jbox_redraw((t_jbox *)p);
+            return;
+        } else {
             p->j_editing_filter_name = false;
             p->j_write_filter_button_down = false;
             jbox_redraw((t_jbox *)p);
@@ -2068,6 +2083,17 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
                 p->j_write_filter_button_down = false;
                 jbox_redraw((t_jbox *)p);
                 return 1;
+            } else if (p->j_filter_name[0] != '\0') {
+                presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
+                p->j_editing_filter_name = false;
+                p->j_write_filter_button_down = false;
+                jbox_redraw((t_jbox *)p);
+                return 1;
+            } else {
+                p->j_editing_filter_name = false;
+                p->j_write_filter_button_down = false;
+                jbox_redraw((t_jbox *)p);
+                return 1;
             }
         }
 
@@ -2201,11 +2227,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         } else {
             jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
         }
-    } else {
-        presetter_hex_to_rgba(&name_color, PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX, 1);
-    }
-
-    if (p->j_selected_tab == gensym("filters") && p->j_filter_name[0] != '\0') {
+    } else if (p->j_selected_tab == gensym("filters") && p->j_filter_name[0] != '\0') {
         if (p->j_editing_filter_name) {
             jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
         } else {
@@ -2617,6 +2639,12 @@ void presetter_draw_filter_grid_row(
         jgraphics_set_source_jrgba(g, &color);
         jgraphics_fill(g);
 
+        jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+        jgraphics_set_font_size(g, 10);
+
+        t_jgraphics_font_extents extents;
+        jgraphics_font_extents(g, &extents);
+
         t_jrgba stroke_color;
         t_jrgba stroke_color_off;
         jcolor_getcolor(gensym("live_arranger_grid_tiles"), &stroke_color, &stroke_color_off);
@@ -2625,8 +2653,6 @@ void presetter_draw_filter_grid_row(
         t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
 
         if (dict && dictionary_getsym(dict, gensym("name"), &name) == MAX_ERR_NONE && name) {
-            jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-            jgraphics_set_font_size(g, 10);
 
             double max_width = cell_width - 24;
             double text_width;
@@ -2664,13 +2690,10 @@ void presetter_draw_filter_grid_row(
             } else if (p->j_selected_filter_cell == cell_idx) {
                 jcolor_getcolor(gensym("live_arranger_grid_tiles"), &text_color, &text_color_off);
             } else {
-                presetter_hex_to_rgba(&text_color, "#888888", 1);
+                presetter_hex_to_rgba(&text_color, "#999999", 1);
             }
 
             jgraphics_set_source_jrgba(g, &text_color);
-
-            t_jgraphics_font_extents extents;
-            jgraphics_font_extents(g, &extents);
 
             double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
             jgraphics_move_to(g, x + 18, text_y);
@@ -2685,7 +2708,7 @@ void presetter_draw_filter_grid_row(
             } else if (p->j_selected_filter_cell == cell_idx) {
                 jcolor_getcolor(gensym("live_arranger_grid_tiles"), &circle_color, &circle_color_off);
             } else {
-                presetter_hex_to_rgba(&circle_color, "#888888", 1);
+                presetter_hex_to_rgba(&circle_color, "#999999", 1);
             }
 
             jgraphics_set_source_jrgba(g, &circle_color);
@@ -2695,6 +2718,22 @@ void presetter_draw_filter_grid_row(
             if (val) {
                 presetter_hex_to_rgba(&stroke_color, PATCHER_OBJECT_COLOR_HEX, 1);
             }
+        } else {
+            t_jrgba circle_color;
+            presetter_hex_to_rgba(&circle_color, "#555555", 1);
+            jgraphics_set_source_jrgba(g, &circle_color);
+            jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
+            jgraphics_fill(g);
+
+            t_jrgba text_color;
+            presetter_hex_to_rgba(&text_color, "#555555", 1);
+            presetter_hex_to_rgba(&stroke_color, "#555555", 1);
+
+            double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
+            jgraphics_set_source_jrgba(g, &text_color);
+            jgraphics_move_to(g, x + 18, text_y);
+            jgraphics_text_path(g, "Empty");
+            jgraphics_fill(g);
         }
 
         if (p->j_selected_filter_cell == cell_idx) {
