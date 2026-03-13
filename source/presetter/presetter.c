@@ -48,10 +48,6 @@
 #define STATUS_TEXT_COLOR_HEX "#999999"
 #define STATUS_CONFIRM_TEXT_COLOR_SYM gensym("live_display_handle_two")
 
-// Refresh
-// #define REFRESH_ON_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-// #define REFRESH_OFF_COLOR_HEX "#333333"
-
 // Confirm
 #define CONFIRM_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
 #define CONFIRM_BUTTON_UP_TEXT_COLOR_SYM gensym("live_display_handle_two")
@@ -94,7 +90,7 @@
 // Buttons
 #define BUTTON_FONT_SIZE 9
 #define BUTTON_PADDING_X 4
-#define BUTTON_PADDING_Y 1
+#define BUTTON_PADDING_Y 2
 
 // Write Button
 #define WRITE_BUTTON_TEXT "WRITE NAME"
@@ -103,7 +99,7 @@
 #define WRITE_BUTTON_OFFSET_Y 8
 
 // Status
-#define STATUS_FONT_SIZE 9
+#define STATUS_FONT_SIZE 10
 #define STATUS_OFFSET_X 8
 #define STATUS_OFFSET_Y 4
 #define STATUS_PADDING_RIGHT 2
@@ -390,7 +386,7 @@ void ext_main(void *r) {
     CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
-    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 257. 158.");
+    CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 289. 170.");
 
     class_register(CLASS_BOX, c);
     s_presetter_class = c;
@@ -493,7 +489,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_filters = dict;
         p->j_applied_filters = hashtab_new(0);
 
-        p->j_selected_tab = gensym("filters");
+        p->j_selected_tab = gensym("presets");
 
         p->j_selected_filter_cell = -1;
         p->j_hovered_filter_cell = -1;
@@ -1709,7 +1705,7 @@ t_bounds presetter_get_confirm_preset_ok_button_bounds(t_presetter *p, t_rect *r
     double text_height;
 
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(p->offscreen, 9);
+    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
     jgraphics_text_measure(p->offscreen, p->j_confirm_preset_status_text, &text_width, &text_height);
 
     t_bounds bounds;
@@ -1854,7 +1850,7 @@ t_bounds presetter_get_confirm_filter_ok_button_bounds(t_presetter *p, t_rect *r
     double text_height;
 
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(p->offscreen, 9);
+    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
     jgraphics_text_measure(p->offscreen, p->j_confirm_filter_status_text, &text_width, &text_height);
 
     t_bounds bounds;
@@ -1977,7 +1973,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                     t_symbol **kvs;
                     hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
 
-                    bool filter_set = false;
+                    bool exists_in_any = false;
 
                     for (long i = 0; i < kc; i++) {
                         char *end;
@@ -1987,10 +1983,52 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                             continue;
                         }
 
-                        if (presetter_set_filter_slot_idx(p, idx, cell_idx)) {
-                            filter_set = true;
-                        } else {
+                        t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+                        if (!dict) {
+                            continue;
+                        }
+
+                        t_atomarray *arr = NULL;
+
+                        dictionary_getatomarray(dict, gensym("slots"), (t_object **)&arr);
+
+                        if (!arr) {
+                            continue;
+                        }
+
+                        long size;
+                        t_atom *av;
+
+                        if (atomarray_getatoms(arr, &size, &av) != MAX_ERR_NONE)
+                            continue;
+
+                        for (long j = 0; j < size; j++) {
+                            if (atom_gettype(&av[j]) == A_LONG && atom_getlong(&av[j]) == cell_idx) {
+                                exists_in_any = true;
+                                break;
+                            }
+                        }
+
+                        if (exists_in_any)
+                            break;
+                    }
+
+                    bool filter_set = false;
+
+                    for (long i = 0; i < kc; i++) {
+                        char *end;
+                        long idx = strtol(kvs[i]->s_name, &end, 10);
+
+                        if (*end != '\0')
+                            continue;
+
+                        if (exists_in_any) {
                             if (presetter_drop_filter_slot_idx(p, idx, cell_idx)) {
+                                filter_set = true;
+                            }
+                        } else {
+                            if (presetter_set_filter_slot_idx(p, idx, cell_idx)) {
                                 filter_set = true;
                             }
                         }
@@ -2571,10 +2609,10 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         jgraphics_set_source_jrgba(g, &color);
 
         if (filtered_cell && p->j_selected_preset_cell != cell_idx) {
-            jgraphics_fill_with_alpha(g, filtered_cell ? .5 : 1);
+            jgraphics_stroke(g);
+        } else {
+            jgraphics_fill(g);
         }
-
-        jgraphics_fill(g);
     }
 }
 
