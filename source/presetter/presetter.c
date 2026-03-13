@@ -1424,11 +1424,7 @@ t_bounds presetter_get_name_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_name_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Grid Bounds */
@@ -1465,11 +1461,7 @@ t_bounds presetter_get_preset_grid_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_grid_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_preset_grid_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x + CELL_PADDING && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y + CELL_PADDING && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Grid Utilities */
@@ -1520,11 +1512,7 @@ t_bounds presetter_get_right_arrow_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_right_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_right_arrow_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Pagination Number Bounds */
@@ -1579,11 +1567,7 @@ t_bounds presetter_get_left_arrow_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_left_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_left_arrow_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Status Bounds */
@@ -1603,11 +1587,7 @@ t_bounds presetter_get_status_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_preset_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_status_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /* Confirm Ok Button Bounds */
@@ -1631,11 +1611,7 @@ t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect) {
@@ -1650,11 +1626,7 @@ t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect
 
 bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
-
-    bool in_x = pt->x >= bounds.x && pt->x <= bounds.width + bounds.x;
-    bool in_y = pt->y >= bounds.y && pt->y <= bounds.height + bounds.y;
-
-    return in_x && in_y;
+    return presetter_generic_in_bounds(&bounds, pt);
 }
 
 /** Filters **/
