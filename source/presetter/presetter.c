@@ -574,13 +574,20 @@ t_dictionary *presetter_lookup_filter_slot(t_presetter *p, long index) {
 }
 
 bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result) {
-    for (long i = 0; i < dictionary_getentrycount(p->j_filters); i++) {
-        char keystr[24];
-        snprintf_zero(keystr, sizeof(keystr), "%ld", i + 1);
-        t_symbol *key = gensym(keystr);
+    t_dictionary *fs = p->j_filters;
+
+    long numkeys = 0;
+    t_symbol **keys = NULL;
+
+    if (dictionary_getkeys(fs, &numkeys, &keys) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    for (long i = 0; i < numkeys; i++) {
+        t_symbol *key = keys[i];
 
         t_dictionary *obj = NULL;
-        dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
+        dictionary_getdictionary(fs, key, (t_object **)&obj);
 
         if (!obj) {
             continue;
@@ -596,10 +603,13 @@ bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result 
         if (name == s) {
             result->dict = obj;
             result->index = key;
+
+            dictionary_freekeys(fs, numkeys, keys);
             return true;
         }
     }
 
+    dictionary_freekeys(fs, numkeys, keys);
     return false;
 }
 
@@ -1286,6 +1296,7 @@ void presetter_handle_filter_name(t_presetter *p) {
 
     if (p->j_filter_name[0] != '\0') {
         presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         p->j_editing_filter_name = false;
         p->j_write_filter_button_down = false;
         jbox_redraw((t_jbox *)p);
