@@ -1567,7 +1567,11 @@ t_bounds presetter_get_preset_grid_bounds(t_presetter *p, t_rect *rect) {
 
 bool presetter_in_grid_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     t_bounds bounds = presetter_get_preset_grid_bounds(p, rect);
-    return presetter_generic_in_bounds(&bounds, pt);
+
+    bool in_x = pt->x >= bounds.x + CELL_PADDING && pt->x <= bounds.x + bounds.width;
+    bool in_y = pt->y >= bounds.y + CELL_PADDING && pt->y <= bounds.y + bounds.height;
+
+    return in_x && in_y;
 }
 
 /* Grid Utilities */
