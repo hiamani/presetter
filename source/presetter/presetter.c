@@ -1839,6 +1839,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 p->j_selected_filter_cell = cell_idx;
             } else {
                 p->j_selected_filter_cell = -1;
+                p->j_editing_filter_name = false;
                 snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
                 return;
             }
