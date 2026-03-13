@@ -1943,10 +1943,11 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
     if (presetter_in_grid_bounds(p, &rect, &pt)) {
         if (p->j_selected_tab == gensym("presets")) {
+            bool filters_applied = hashtab_getsize(p->j_applied_filters) != 0;
             long cell_idx = presetter_get_preset_cell_idx(p, &rect, &pt);
 
             if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
-                !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
+                !((modifiers & eCommandKey) || (modifiers & eControlKey)) && !filters_applied) {
                 p->j_editing_preset_name = false;
                 p->j_confirm_preset_delete = true;
                 p->j_confirm_preset_cell = cell_idx;
@@ -1968,7 +1969,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             }
 
             if (modifiers & eLeftButton && modifiers & eShiftKey && !(modifiers & eAltKey)) {
-                if (hashtab_getsize(p->j_applied_filters) != 0) {
+                if (filters_applied) {
                     long kc;
                     t_symbol **kvs;
                     hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
