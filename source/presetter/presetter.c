@@ -221,16 +221,16 @@ typedef struct _presetter {
     t_status j_preset_status_override;
     char j_preset_idle_status_text[512];
     char j_preset_hover_status_text[1024];
-    char j_preset_confirm_status_text[512];
+    char j_confirm_preset_status_text[512];
 
     double j_status_height;
 
     // Confirm
-    long j_confirm_cell;
-    bool j_confirm_store;
-    bool j_confirm_delete;
-    bool j_confirm_ok_button_down;
-    bool j_confirm_cancel_button_down;
+    long j_confirm_preset_cell;
+    bool j_confirm_preset_store;
+    bool j_confirm_preset_delete;
+    bool j_confirm_preset_ok_button_down;
+    bool j_confirm_preset_cancel_button_down;
 
     // Pagination
     long j_preset_pagination_number;
@@ -263,7 +263,13 @@ typedef struct _presetter {
     t_status j_filter_status_override;
     char j_filter_idle_status_text[512];
     char j_filter_hover_status_text[1024];
-    char j_filter_confirm_status_text[512];
+    char j_confirm_filter_status_text[512];
+
+    // Confirm
+    long j_confirm_filter_cell;
+    bool j_confirm_filter_delete;
+    bool j_confirm_filter_ok_button_down;
+    bool j_confirm_filter_cancel_button_down;
 
     // Pagination
     long j_filter_pagination_number;
@@ -470,12 +476,12 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_preset_status_override = PRESETTER_NO_STATUS;
         presetter_init_status_dim(p);
 
-        // Confirm
-        p->j_confirm_cell = -1;
-        p->j_confirm_store = false;
-        p->j_confirm_delete = false;
-        p->j_confirm_ok_button_down = false;
-        p->j_confirm_cancel_button_down = false;
+        // Preset Confirm
+        p->j_confirm_preset_cell = -1;
+        p->j_confirm_preset_store = false;
+        p->j_confirm_preset_delete = false;
+        p->j_confirm_preset_ok_button_down = false;
+        p->j_confirm_preset_cancel_button_down = false;
 
         // Pagination
         p->j_preset_pagination_number = 1;
@@ -496,6 +502,12 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         // Status
         p->j_filter_status = PRESETTER_NO_STATUS;
         p->j_filter_status_override = PRESETTER_NO_STATUS;
+
+        // Filter Confirm
+        p->j_confirm_filter_cell = -1;
+        p->j_confirm_filter_delete = false;
+        p->j_confirm_filter_ok_button_down = false;
+        p->j_confirm_filter_cancel_button_down = false;
 
         // Pagination
         p->j_filter_pagination_number = 1;
@@ -730,6 +742,22 @@ bool presetter_remove_filter_sym(t_presetter *p, t_symbol *s) {
 
     if (dictionary_deleteentry(p->j_filters, result.index) == MAX_ERR_NONE) {
         if (result.index == presetter_long_to_sym(p->j_selected_filter_cell)) {
+            p->j_selected_filter_cell = -1;
+        }
+
+        jbox_redraw((t_jbox *)p);
+        defer_low((t_object *)p, (method)presetter_hashtab_clear_deferred, NULL, 0, NULL);
+        return true;
+    }
+
+    return false;
+}
+
+bool presetter_remove_filter_idx(t_presetter *p, long idx) {
+    t_symbol *is = presetter_long_to_sym(idx);
+
+    if (dictionary_deleteentry(p->j_filters, is) == MAX_ERR_NONE) {
+        if (is == presetter_long_to_sym(p->j_selected_filter_cell)) {
             p->j_selected_filter_cell = -1;
         }
 
@@ -1572,7 +1600,7 @@ bool presetter_in_left_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
 
 /* Status Bounds */
 
-t_bounds presetter_get_status_bounds(t_presetter *p, t_rect *rect) {
+t_bounds presetter_get_preset_status_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
     // t_bounds ra_bounds = presetter_get_right_arrow_bounds(p, rect);
     t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
@@ -1586,13 +1614,13 @@ t_bounds presetter_get_status_bounds(t_presetter *p, t_rect *rect) {
 }
 
 bool presetter_in_preset_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_status_bounds(p, rect);
+    t_bounds bounds = presetter_get_preset_status_bounds(p, rect);
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
-/* Confirm Ok Button Bounds */
+/* Confirm Button Bounds */
 
-t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
+t_bounds presetter_get_confirm_preset_ok_button_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
 
     double text_width;
@@ -1600,7 +1628,7 @@ t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
 
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(p->offscreen, 9);
-    jgraphics_text_measure(p->offscreen, p->j_preset_confirm_status_text, &text_width, &text_height);
+    jgraphics_text_measure(p->offscreen, p->j_confirm_preset_status_text, &text_width, &text_height);
 
     t_bounds bounds;
     bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
@@ -1609,13 +1637,13 @@ t_bounds presetter_get_confirm_ok_button_bounds(t_presetter *p, t_rect *rect) {
     return bounds;
 }
 
-bool presetter_in_confirm_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
+bool presetter_in_confirm_preset_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_preset_ok_button_bounds(p, rect);
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
-t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect) {
-    t_bounds cobounds = presetter_get_confirm_ok_button_bounds(p, rect);
+t_bounds presetter_get_confirm_preset_cancel_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds cobounds = presetter_get_confirm_preset_ok_button_bounds(p, rect);
 
     t_bounds bounds;
     bounds.x = cobounds.x + cobounds.width + CONFIRM_CANCEL_BUTTON_MARGIN_LEFT;
@@ -1624,8 +1652,8 @@ t_bounds presetter_get_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect
     return bounds;
 }
 
-bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
+bool presetter_in_confirm_preset_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_preset_cancel_button_bounds(p, rect);
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
@@ -1698,8 +1726,7 @@ bool presetter_in_filter_circle_bounds(t_presetter *p, t_rect *rect, t_pt *pt, t
     double circle_x = x + 6;
     double circle_y = y + ((double)FILTER_CELL_HEIGHT - 8) / 2;
 
-    // 8x8 hitbox (the circle's diameter)
-    return (pt->x >= circle_x && pt->x <= circle_x + 8 && pt->y >= circle_y && pt->y <= circle_y + 8);
+    return pt->x >= circle_x && pt->x <= circle_x + 8 && pt->y >= circle_y && pt->y <= circle_y + 8;
 }
 
 /* Write Button Bounds */
@@ -1717,18 +1744,85 @@ bool presetter_in_write_filter_button_bounds(t_presetter *p, t_rect *rect, t_pt 
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
+/* Status Bounds */
+
+t_bounds presetter_get_filter_status_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
+    t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
+
+    t_bounds bounds;
+    bounds.x = STATUS_OFFSET_X;
+    bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
+    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
+    bounds.height = p->j_status_height;
+    return bounds;
+}
+
+bool presetter_in_filter_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_preset_status_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
+/* Confirm Button Bounds */
+
+t_bounds presetter_get_confirm_filter_ok_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
+
+    double text_width;
+    double text_height;
+
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, 9);
+    jgraphics_text_measure(p->offscreen, p->j_confirm_filter_status_text, &text_width, &text_height);
+
+    t_bounds bounds;
+    bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
+    bounds.y = gbounds.y + gbounds.height + CONFIRM_BUTTON_OFFSET_Y;
+    presetter_measure_button(p, CONFIRM_OK_BUTTON_TEXT, &bounds.width, &bounds.height);
+    return bounds;
+}
+
+bool presetter_in_confirm_filter_ok_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_filter_ok_button_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
+t_bounds presetter_get_confirm_filter_cancel_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds cobounds = presetter_get_confirm_filter_ok_button_bounds(p, rect);
+
+    t_bounds bounds;
+    bounds.x = cobounds.x + cobounds.width + CONFIRM_CANCEL_BUTTON_MARGIN_LEFT;
+    bounds.y = cobounds.y;
+    presetter_measure_button(p, CONFIRM_CANCEL_BUTTON_TEXT, &bounds.width, &bounds.height);
+    return bounds;
+}
+
+bool presetter_in_confirm_filter_cancel_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_confirm_filter_cancel_button_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
 
 void presetter_clear_confirm(t_presetter *p) {
-    p->j_confirm_cell = -1;
-    p->j_confirm_store = false;
-    p->j_confirm_delete = false;
+    // Presets
     p->j_preset_status_override = PRESETTER_NO_STATUS;
-    p->j_preset_confirm_status_text[0] = '\0';
-    p->j_confirm_ok_button_down = false;
-    p->j_confirm_cancel_button_down = false;
+    p->j_confirm_preset_cell = -1;
+    p->j_confirm_preset_store = false;
+    p->j_confirm_preset_delete = false;
+    p->j_confirm_preset_status_text[0] = '\0';
+    p->j_confirm_preset_ok_button_down = false;
+    p->j_confirm_preset_cancel_button_down = false;
+
+    // Filters
+    p->j_filter_status_override = PRESETTER_NO_STATUS;
+    p->j_confirm_filter_cell = -1;
+    p->j_confirm_filter_delete = false;
+    p->j_confirm_filter_status_text[0] = '\0';
+    p->j_confirm_filter_ok_button_down = false;
+    p->j_confirm_filter_cancel_button_down = false;
 }
 
 void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers) {
@@ -1776,11 +1870,11 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
                 !((modifiers & eCommandKey) || (modifiers & eControlKey))) {
                 p->j_editing_preset_name = false;
-                p->j_confirm_delete = true;
-                p->j_confirm_cell = cell_idx;
+                p->j_confirm_preset_delete = true;
+                p->j_confirm_preset_cell = cell_idx;
                 p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
                 snprintf_zero(
-                    p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Delete Preset %d?",
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Delete Preset %d?",
                     cell_idx
                 );
                 jbox_redraw((t_jbox *)p);
@@ -1797,11 +1891,11 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
             if (modifiers & eLeftButton && modifiers & eShiftKey && !(modifiers & eAltKey)) {
                 p->j_editing_preset_name = false;
-                p->j_confirm_store = true;
-                p->j_confirm_cell = cell_idx;
+                p->j_confirm_preset_store = true;
+                p->j_confirm_preset_cell = cell_idx;
                 p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
                 snprintf_zero(
-                    p->j_preset_confirm_status_text, sizeof(p->j_preset_confirm_status_text), "Store Preset %d?",
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Store Preset %d?",
                     cell_idx
                 );
                 jbox_redraw((t_jbox *)p);
@@ -1810,6 +1904,23 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         } else {
             t_cell_pos pos = presetter_get_filter_cell_pos(p, &rect, &pt);
             long cell_idx = presetter_get_filter_cell_idx(p, &rect, &pt);
+
+            if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
+                !((modifiers & eCommandKey) || (modifiers & eControlKey)) &&
+                presetter_lookup_filter_slot(p, cell_idx)) {
+                p->j_editing_filter_name = false;
+                p->j_confirm_filter_delete = true;
+                p->j_confirm_filter_cell = cell_idx;
+                p->j_filter_status_override = PRESETTER_CONFIRM_STATUS;
+                snprintf_zero(
+                    p->j_confirm_filter_status_text, sizeof(p->j_confirm_filter_status_text), "Delete Filter %d?",
+                    cell_idx
+                );
+                jbox_redraw((t_jbox *)p);
+                return;
+            }
+
+            presetter_clear_confirm(p);
 
             if (presetter_in_filter_circle_bounds(p, &rect, &pt, &pos)) {
                 t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
@@ -1870,21 +1981,38 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         }
     }
 
-    if ((p->j_confirm_store || p->j_confirm_delete) && p->j_preset_confirm_status_text[0] != '\0' &&
-        p->j_confirm_cell != -1) {
-        if (presetter_in_confirm_ok_button_bounds(p, &rect, &pt)) {
-            p->j_confirm_ok_button_down = true;
+    if ((p->j_confirm_preset_store || p->j_confirm_preset_delete) && p->j_confirm_preset_status_text[0] != '\0' &&
+        p->j_confirm_preset_cell != -1) {
+        if (presetter_in_confirm_preset_ok_button_bounds(p, &rect, &pt)) {
+            p->j_confirm_preset_ok_button_down = true;
+            jbox_redraw((t_jbox *)p);
+            return;
         }
 
-        if (presetter_in_confirm_cancel_button_bounds(p, &rect, &pt)) {
-            p->j_confirm_cancel_button_down = true;
+        if (presetter_in_confirm_preset_cancel_button_bounds(p, &rect, &pt)) {
+            p->j_confirm_preset_cancel_button_down = true;
+            jbox_redraw((t_jbox *)p);
+            return;
         }
-        jbox_redraw((t_jbox *)p);
-        return;
+    }
+
+    if (p->j_confirm_filter_delete && p->j_confirm_filter_status_text[0] != '\0' && p->j_confirm_filter_cell != -1) {
+        if (presetter_in_confirm_filter_ok_button_bounds(p, &rect, &pt)) {
+            p->j_confirm_filter_ok_button_down = true;
+            jbox_redraw((t_jbox *)p);
+            return;
+        }
+
+        if (presetter_in_confirm_filter_cancel_button_bounds(p, &rect, &pt)) {
+            p->j_confirm_filter_cancel_button_down = true;
+            jbox_redraw((t_jbox *)p);
+            return;
+        }
     }
 
     if (presetter_in_right_arrow_bounds(p, &rect, &pt)) {
         p->j_pagination_right_arrow_down = true;
+        presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1896,6 +2024,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         if (p->j_selected_tab == gensym("filters") && p->j_filter_pagination_number > 1) {
             p->j_pagination_left_arrow_down = true;
         }
+        presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1904,6 +2033,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         p->j_selected_tab = gensym("presets");
         p->j_editing_filter_name = false;
         p->j_editing_preset_name = false;
+        presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1912,6 +2042,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         p->j_selected_tab = gensym("filters");
         p->j_editing_filter_name = false;
         p->j_editing_preset_name = false;
+        presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1930,18 +2061,35 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
         return;
     }
 
-    if (p->j_confirm_ok_button_down) {
-        if (p->j_confirm_store && p->j_confirm_cell != -1) {
-            presetter_handle_store(p, p->j_confirm_cell);
-        } else if (p->j_confirm_delete && p->j_confirm_cell != -1) {
-            presetter_handle_delete(p, p->j_confirm_cell);
+    if (p->j_confirm_preset_ok_button_down) {
+        if (p->j_confirm_preset_store && p->j_confirm_preset_cell != -1) {
+            presetter_handle_store(p, p->j_confirm_preset_cell);
+        } else if (p->j_confirm_preset_delete && p->j_confirm_preset_cell != -1) {
+            presetter_handle_delete(p, p->j_confirm_preset_cell);
         }
         presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
 
-    if (p->j_confirm_cancel_button_down) {
+    if (p->j_confirm_preset_cancel_button_down) {
+        presetter_clear_confirm(p);
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_confirm_filter_ok_button_down) {
+        if (p->j_confirm_filter_delete) {
+            presetter_remove_filter_idx(p, p->j_confirm_filter_cell);
+            p->j_filter_name[0] = '\0';
+            dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        }
+        presetter_clear_confirm(p);
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_confirm_filter_cancel_button_down) {
         presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
         return;
@@ -2014,7 +2162,6 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             long cell_idx = presetter_get_filter_cell_idx(p, &rect, &pt);
             p->j_hovered_filter_cell = cell_idx;
         } else {
-            p->j_filter_status = PRESETTER_IDLE_STATUS;
             p->j_hovered_filter_cell = -1;
             p->j_last_hovered_filter_cell = -2;
         }
@@ -2329,7 +2476,7 @@ void presetter_draw_preset_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
 /* Status */
 
-const char *presetter_get_status_text(t_presetter *p) {
+const char *presetter_get_preset_status_text(t_presetter *p) {
     t_status effective =
         (p->j_preset_status_override != PRESETTER_NO_STATUS) ? p->j_preset_status_override : p->j_preset_status;
 
@@ -2337,14 +2484,28 @@ const char *presetter_get_status_text(t_presetter *p) {
         return p->j_preset_idle_status_text;
     if (effective == PRESETTER_HOVER_STATUS && p->j_preset_hover_status_text[0] != '\0')
         return p->j_preset_hover_status_text;
-    if (effective == PRESETTER_CONFIRM_STATUS && p->j_preset_confirm_status_text[0] != '\0')
-        return p->j_preset_confirm_status_text;
+    if (effective == PRESETTER_CONFIRM_STATUS && p->j_confirm_preset_status_text[0] != '\0')
+        return p->j_confirm_preset_status_text;
 
     return "Ready";
 }
 
-void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    t_bounds bounds = presetter_get_status_bounds(p, rect);
+const char *presetter_get_filter_status_text(t_presetter *p) {
+    t_status effective =
+        (p->j_filter_status_override != PRESETTER_NO_STATUS) ? p->j_filter_status_override : p->j_filter_status;
+
+    if (effective == PRESETTER_IDLE_STATUS && p->j_filter_idle_status_text[0] != '\0')
+        return p->j_filter_idle_status_text;
+    if (effective == PRESETTER_HOVER_STATUS && p->j_filter_hover_status_text[0] != '\0')
+        return p->j_filter_hover_status_text;
+    if (effective == PRESETTER_CONFIRM_STATUS && p->j_confirm_filter_status_text[0] != '\0')
+        return p->j_confirm_filter_status_text;
+
+    return "Ready";
+}
+
+void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_preset_status_bounds(p, rect);
 
     jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_NORMAL);
     jgraphics_set_font_size(g, STATUS_FONT_SIZE);
@@ -2352,7 +2513,7 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
 
-    const char *status_text = presetter_get_status_text(p);
+    const char *status_text = presetter_get_preset_status_text(p);
 
     double max_width = bounds.width;
     double text_width;
@@ -2394,18 +2555,18 @@ void presetter_draw_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     jgraphics_fill(g);
 }
 
-void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_preset_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
+void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
-    t_bounds bounds = presetter_get_confirm_ok_button_bounds(p, rect);
+    t_bounds bounds = presetter_get_confirm_preset_ok_button_bounds(p, rect);
 
     t_jrgba bg_color;
     t_jrgba bg_color_off;
     t_jrgba text_color;
     t_jrgba text_color_off;
 
-    if (p->j_confirm_ok_button_down) {
+    if (p->j_confirm_preset_ok_button_down) {
         jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
     } else {
@@ -2415,7 +2576,7 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_confirm_ok_button_down) {
+    if (!p->j_confirm_preset_ok_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
@@ -2436,18 +2597,18 @@ void presetter_draw_confirm_ok_button(t_presetter *p, t_jgraphics *g, t_rect *re
     jgraphics_fill(g);
 }
 
-void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_preset_confirm_status_text[0] == '\0' || !(p->j_confirm_store || p->j_confirm_delete))
+void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
-    t_bounds bounds = presetter_get_confirm_cancel_button_bounds(p, rect);
+    t_bounds bounds = presetter_get_confirm_preset_cancel_button_bounds(p, rect);
 
     t_jrgba bg_color;
     t_jrgba bg_color_off;
     t_jrgba text_color;
     t_jrgba text_color_off;
 
-    if (p->j_confirm_cancel_button_down) {
+    if (p->j_confirm_preset_cancel_button_down) {
         jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
     } else {
@@ -2457,7 +2618,7 @@ void presetter_draw_confirm_cancel_button(t_presetter *p, t_jgraphics *g, t_rect
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_confirm_cancel_button_down) {
+    if (!p->j_confirm_preset_cancel_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
@@ -2808,6 +2969,140 @@ void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     }
 }
 
+void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
+        return;
+
+    t_bounds bounds = presetter_get_confirm_filter_ok_button_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba bg_color_off;
+    t_jrgba text_color;
+    t_jrgba text_color_off;
+
+    if (p->j_confirm_filter_cancel_button_down) {
+        presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+    } else {
+        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+
+    if (!p->j_confirm_filter_ok_button_down) {
+        jgraphics_set_source_jrgba(g, &text_color);
+        jgraphics_stroke_preserve(g);
+    }
+
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
+    jgraphics_text_path(g, CONFIRM_OK_BUTTON_TEXT);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
+        return;
+
+    t_bounds bounds = presetter_get_confirm_filter_cancel_button_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba bg_color_off;
+    t_jrgba text_color;
+    t_jrgba text_color_off;
+
+    if (p->j_confirm_filter_cancel_button_down) {
+        presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
+        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+    } else {
+        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+        presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+
+    if (!p->j_confirm_filter_cancel_button_down) {
+        jgraphics_set_source_jrgba(g, &text_color);
+        jgraphics_stroke_preserve(g);
+    }
+
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
+    jgraphics_text_path(g, CONFIRM_CANCEL_BUTTON_TEXT);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_bounds bounds = presetter_get_filter_status_bounds(p, rect);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_NORMAL);
+    jgraphics_set_font_size(g, STATUS_FONT_SIZE);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    const char *status_text = presetter_get_filter_status_text(p);
+
+    double max_width = bounds.width;
+    double text_width;
+    double text_height;
+    char visible[1048];
+    char with_ellipsis[1048];
+
+    jgraphics_text_measure(g, status_text, &text_width, &text_height);
+
+    if (text_width > max_width) {
+        snprintf_zero(visible, sizeof(visible), "%s", status_text);
+        snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+
+        jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+
+        while (text_width > max_width && strlen(visible) > 0) {
+            visible[strlen(visible) - 1] = '\0';
+            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
+            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
+        }
+
+        snprintf_zero(visible, sizeof(visible), "%s...", visible);
+    } else {
+        snprintf_zero(visible, sizeof(visible), "%s", status_text);
+    }
+
+    t_jrgba color;
+
+    if (p->j_filter_status_override != PRESETTER_NO_STATUS) {
+        presetter_hex_to_rgba(&color, PATCHER_OBJECT_COLOR_HEX, 1);
+    } else {
+        presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
+    }
+
+    jgraphics_set_source_jrgba(g, &color);
+    jgraphics_move_to(g, bounds.x, bounds.y + extents.height);
+    jgraphics_text_path(g, visible);
+    jgraphics_fill(g);
+}
+
 /* Main Paint */
 
 void presetter_paint(t_presetter *p, t_object *patcherview) {
@@ -2828,14 +3123,17 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     if (p->j_selected_tab == gensym("presets")) {
         presetter_draw_write_button(p, g, &rect);
         presetter_draw_preset_grid(p, g, &rect);
-        presetter_draw_confirm_ok_button(p, g, &rect);
-        presetter_draw_confirm_cancel_button(p, g, &rect);
+        presetter_draw_confirm_preset_ok_button(p, g, &rect);
+        presetter_draw_confirm_preset_cancel_button(p, g, &rect);
+        presetter_draw_preset_status(p, g, &rect);
     } else {
         presetter_draw_write_filter_button(p, g, &rect);
         presetter_draw_filter_grid(p, g, &rect);
+        presetter_draw_confirm_filter_ok_button(p, g, &rect);
+        presetter_draw_confirm_filter_cancel_button(p, g, &rect);
+        presetter_draw_filter_status(p, g, &rect);
     }
 
-    presetter_draw_status(p, g, &rect);
     presetter_draw_right_arrow(p, g, &rect);
     presetter_draw_pagination_number(p, g, &rect);
     presetter_draw_left_arrow(p, g, &rect);
