@@ -1275,6 +1275,28 @@ void presetter_handle_preset_rename(t_presetter *p) {
     jbox_redraw((t_jbox *)p);
 }
 
+void presetter_handle_filter_name(t_presetter *p) {
+    if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
+        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        p->j_editing_filter_name = false;
+        p->j_write_filter_button_down = false;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_filter_name[0] != '\0') {
+        presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
+        p->j_editing_filter_name = false;
+        p->j_write_filter_button_down = false;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    p->j_editing_filter_name = false;
+    p->j_write_filter_button_down = false;
+    jbox_redraw((t_jbox *)p);
+}
+
 // -----------------------------------------------------------------------------
 // Element Bounds
 // -----------------------------------------------------------------------------
@@ -1626,8 +1648,8 @@ bool presetter_in_confirm_cancel_button_bounds(t_presetter *p, t_rect *rect, t_p
 
 /** Filters **/
 
-long presetter_get_filter_grid_offset(t_presetter *p, long cells_x, long cells_y) {
-    return (p->j_filter_pagination_number - 1) * cells_x * cells_y;
+long presetter_get_filter_grid_offset(t_presetter *p, t_grid_dim *dim) {
+    return (p->j_filter_pagination_number - 1) * dim->columns * dim->rows;
 }
 
 t_bounds presetter_get_filter_grid_bounds(t_presetter *p, t_rect *rect) {
@@ -1674,7 +1696,7 @@ long presetter_get_filter_cell_idx(t_presetter *p, t_rect *rect, t_pt *pt) {
     dim.columns = (long)floor(rect->width / FILTER_CELL_MIN_WIDTH);
     dim.rows = (long)floor(pgbounds.height / (FILTER_CELL_HEIGHT + FILTER_GRID_PADDING));
 
-    long offset = presetter_get_filter_grid_offset(p, dim.columns, dim.rows);
+    long offset = presetter_get_filter_grid_offset(p, &dim);
     return (pos.x + dim.columns * pos.y + 1) + offset;
 }
 
@@ -1782,22 +1804,15 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 return;
             }
 
-            if (modifiers & eLeftButton && !(modifiers & eShiftKey) &&
-                // Allow for interaction in unlocked patches
-                // !(modifiers & eCommandKey) &&
-                // !(modifiers & eControlKey) &&
-                !(modifiers & eAltKey)) {
+            if (modifiers & eLeftButton && !(modifiers & eShiftKey) && !(modifiers & eAltKey)) {
+                p->j_editing_preset_name = false;
                 presetter_clear_confirm(p);
                 presetter_handle_recall(p, cell_idx);
                 jbox_redraw((t_jbox *)p);
                 return;
             }
 
-            if (modifiers & eLeftButton && modifiers & eShiftKey &&
-                // Allow for interaction in unlocked patches
-                // !(modifiers & eCommandKey) &&
-                // !(modifiers & eControlKey) &&
-                !(modifiers & eAltKey)) {
+            if (modifiers & eLeftButton && modifiers & eShiftKey && !(modifiers & eAltKey)) {
                 p->j_editing_preset_name = false;
                 p->j_confirm_store = true;
                 p->j_confirm_cell = cell_idx;
@@ -1837,7 +1852,13 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 return;
             }
 
-            p->j_selected_filter_cell = cell_idx;
+            if (p->j_selected_filter_cell != cell_idx) {
+                p->j_selected_filter_cell = cell_idx;
+            } else {
+                p->j_selected_filter_cell = -1;
+                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
+                return;
+            }
 
             t_dictionary *dict = presetter_lookup_filter_slot(p, p->j_selected_filter_cell);
             t_symbol *name = NULL;
@@ -1857,6 +1878,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             );
 
             p->j_preset_status = PRESETTER_IDLE_STATUS;
+            p->j_editing_filter_name = false;
 
             jbox_redraw((t_jbox *)p);
 
@@ -1883,8 +1905,13 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         return;
     }
 
-    if (presetter_in_left_arrow_bounds(p, &rect, &pt) && p->j_preset_pagination_number > 1) {
-        p->j_pagination_left_arrow_down = true;
+    if (presetter_in_left_arrow_bounds(p, &rect, &pt)) {
+        if (p->j_selected_tab == gensym("presets") && p->j_preset_pagination_number > 1) {
+            p->j_pagination_left_arrow_down = true;
+        }
+        if (p->j_selected_tab == gensym("filters") && p->j_filter_pagination_number > 1) {
+            p->j_pagination_left_arrow_down = true;
+        }
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -1915,24 +1942,8 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
     }
 
     if (p->j_write_filter_button_down) {
-        if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
-            dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
-            p->j_editing_filter_name = false;
-            p->j_write_filter_button_down = false;
-            jbox_redraw((t_jbox *)p);
-            return;
-        } else if (p->j_filter_name[0] != '\0') {
-            presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
-            p->j_editing_filter_name = false;
-            p->j_write_filter_button_down = false;
-            jbox_redraw((t_jbox *)p);
-            return;
-        } else {
-            p->j_editing_filter_name = false;
-            p->j_write_filter_button_down = false;
-            jbox_redraw((t_jbox *)p);
-            return;
-        }
+        presetter_handle_filter_name(p);
+        return;
     }
 
     if (p->j_confirm_ok_button_down) {
@@ -1954,14 +1965,25 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
 
     if (p->j_pagination_right_arrow_down) {
         p->j_pagination_right_arrow_down = false;
-        p->j_preset_pagination_number = p->j_preset_pagination_number + 1;
+        if (p->j_selected_tab == gensym("presets")) {
+            p->j_preset_pagination_number = p->j_preset_pagination_number + 1;
+        } else {
+            p->j_filter_pagination_number = p->j_filter_pagination_number + 1;
+            p->j_selected_filter_cell = -1;
+            snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "\0");
+        }
         jbox_redraw((t_jbox *)p);
         return;
     }
 
     if (p->j_pagination_left_arrow_down) {
         p->j_pagination_left_arrow_down = false;
-        p->j_preset_pagination_number = p->j_preset_pagination_number - 1;
+        if (p->j_selected_tab == gensym("presets")) {
+            p->j_preset_pagination_number = p->j_preset_pagination_number - 1;
+        } else {
+            p->j_filter_pagination_number = p->j_filter_pagination_number - 1;
+            p->j_selected_filter_cell = -1;
+        }
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -2077,24 +2099,8 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 
         // Enter / Return
         if (keycode == -4) {
-            if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
-                dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
-                p->j_editing_filter_name = false;
-                p->j_write_filter_button_down = false;
-                jbox_redraw((t_jbox *)p);
-                return 1;
-            } else if (p->j_filter_name[0] != '\0') {
-                presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
-                p->j_editing_filter_name = false;
-                p->j_write_filter_button_down = false;
-                jbox_redraw((t_jbox *)p);
-                return 1;
-            } else {
-                p->j_editing_filter_name = false;
-                p->j_write_filter_button_down = false;
-                jbox_redraw((t_jbox *)p);
-                return 1;
-            }
+            presetter_handle_filter_name(p);
+            return 1;
         }
 
         // Escape
@@ -2145,6 +2151,8 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         } else {
             if (p->j_filter_name[0] != '\0') {
                 snprintf_zero(text, sizeof(text), "%s", p->j_filter_name);
+            } else if (p->j_selected_filter_cell != -1) {
+                snprintf_zero(text, sizeof(text), "%s", "Click to create new");
             } else {
                 snprintf_zero(text, sizeof(text), "%s", "No filter selected");
             }
@@ -2515,7 +2523,11 @@ void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *re
     jgraphics_set_font_size(g, PAGINATION_NUMBER_FONT_SIZE);
 
     char number_text[16];
-    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
+    if (p->j_selected_tab == gensym("presets")) {
+        snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
+    } else {
+        snprintf_zero(number_text, sizeof(number_text), "%d", p->j_filter_pagination_number);
+    }
 
     jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
     jgraphics_text_path(g, number_text);
@@ -2528,7 +2540,9 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba color;
     if (p->j_pagination_left_arrow_down) {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
-    } else if (p->j_preset_pagination_number > 1) {
+    } else if (p->j_selected_tab == gensym("presets") && p->j_preset_pagination_number > 1) {
+        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    } else if (p->j_selected_tab == gensym("filters") && p->j_filter_pagination_number > 1) {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
     } else {
         presetter_hex_to_rgba(&color, PAGINATION_ARROW_OFF_COLOR_HEX, 1);
@@ -2626,7 +2640,7 @@ void presetter_draw_filter_grid_row(
 ) {
     for (int i = 0; i < dim->columns; i++) {
         double x = (double)i * (cell_width + FILTER_GRID_PADDING) + 8.5;
-        int cell_idx = (i + dim->columns * row_idx + 1); // + presetter_get_filter_grid_offset(p, dim);
+        int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_filter_grid_offset(p, dim);
 
         t_jrgba color;
         if (cell_idx == p->j_hovered_filter_cell) {
