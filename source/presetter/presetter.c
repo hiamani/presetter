@@ -769,7 +769,7 @@ bool presetter_remove_filter_idx(t_presetter *p, long idx) {
     return false;
 }
 
-bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+bool presetter_set_filter_slot_sym(t_presetter *p, t_symbol *s, long slot) {
     t_filter_result result;
 
     if (!presetter_find_filter_by_name(p, s, &result)) {
@@ -818,7 +818,52 @@ bool presetter_set_filter_slot(t_presetter *p, t_symbol *s, long slot) {
     return true;
 }
 
-bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
+bool presetter_set_filter_slot_idx(t_presetter *p, long idx, long slot) {
+    t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+    if (!dict) {
+        return false;
+    }
+
+    t_atom a;
+    atom_setlong(&a, slot);
+
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(dict, gensym("slots"), (t_object **)&arr);
+
+    if (!arr) {
+        arr = atomarray_new(1, &a);
+        if (!arr) {
+            return false;
+        }
+
+        if (dictionary_appendatomarray(dict, gensym("slots"), (t_object *)arr) != MAX_ERR_NONE) {
+            return false;
+        }
+
+        return true;
+    }
+
+    long size;
+    t_atom *results;
+
+    if (atomarray_getatoms(arr, &size, &results) != MAX_ERR_NONE) {
+        return false;
+    }
+
+    for (long i = 0; i < size; i++) {
+        t_atom *result = &results[i];
+        if (atom_gettype(result) == A_LONG && atom_getlong(result) == slot) {
+            return false;
+        }
+    }
+
+    atomarray_appendatom((t_atomarray *)arr, &a);
+
+    return true;
+}
+
+bool presetter_drop_filter_slot_sym(t_presetter *p, t_symbol *s, long slot) {
     t_filter_result result;
 
     if (!presetter_find_filter_by_name(p, s, &result)) {
@@ -839,23 +884,46 @@ bool presetter_drop_filter_slot(t_presetter *p, t_symbol *s, long slot) {
         return false;
     }
 
-    long idx = -1;
-
     for (long i = 0; i < size; i++) {
         t_atom *result = &results[i];
         if (atom_gettype(result) == A_LONG && atom_getlong(result) == slot) {
-            idx = i;
-            break;
+            atomarray_chuckindex(arr, i);
+            return true;
         }
     }
 
-    if (idx == -1) {
+    return false;
+}
+
+bool presetter_drop_filter_slot_idx(t_presetter *p, long idx, long slot) {
+    t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+    if (!dict) {
         return false;
     }
 
-    atomarray_chuckindex(arr, idx);
+    t_atomarray *arr = NULL;
+    dictionary_getatomarray(dict, gensym("slots"), (t_object **)&arr);
 
-    return true;
+    if (!arr) {
+        return false;
+    }
+
+    long size;
+    t_atom *results;
+
+    if (MAX_ERR_NONE != atomarray_getatoms(arr, &size, &results)) {
+        return false;
+    }
+
+    for (long i = 0; i < size; i++) {
+        if (atom_gettype(&results[i]) == A_LONG && atom_getlong(&results[i]) == slot) {
+            atomarray_chuckindex(arr, i);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
@@ -866,6 +934,15 @@ bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
     }
 
     return hashtab_storelong(p->j_applied_filters, result.index, (t_atom_long) true) == MAX_ERR_NONE;
+}
+
+bool presetter_apply_filter_idx(t_presetter *p, long idx) {
+    t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+    if (!dict)
+        return false;
+
+    return hashtab_storelong(p->j_applied_filters, presetter_long_to_sym(idx), (t_atom_long) true) == MAX_ERR_NONE;
 }
 
 bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
@@ -1165,7 +1242,7 @@ void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *arg
     if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_LONG)
         return;
 
-    if (presetter_set_filter_slot(p, atom_getsym(argv), atom_getlong(argv + 1))) {
+    if (presetter_set_filter_slot_sym(p, atom_getsym(argv), atom_getlong(argv + 1))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
         defer_low((t_object *)p, (method)presetter_redraw_deferred, NULL, 0, NULL);
         return;
@@ -1179,8 +1256,9 @@ void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *
     if (atom_gettype(argv) != A_SYM || atom_gettype(argv + 1) != A_LONG)
         return;
 
-    if (presetter_drop_filter_slot(p, atom_getsym(argv), atom_getlong(argv + 1))) {
+    if (presetter_drop_filter_slot_sym(p, atom_getsym(argv), atom_getlong(argv + 1))) {
         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        defer_low((t_object *)p, (method)presetter_redraw_deferred, NULL, 0, NULL);
         return;
     }
 
@@ -1890,6 +1968,38 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             }
 
             if (modifiers & eLeftButton && modifiers & eShiftKey && !(modifiers & eAltKey)) {
+                if (hashtab_getsize(p->j_applied_filters) != 0) {
+                    long kc;
+                    t_symbol **kvs;
+                    hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
+
+                    bool filter_set = false;
+
+                    for (long i = 0; i < kc; i++) {
+                        char *end;
+                        long idx = strtol(kvs[i]->s_name, &end, 10);
+
+                        if (*end != '\0') {
+                            continue;
+                        }
+
+                        if (presetter_set_filter_slot_idx(p, idx, cell_idx)) {
+                            filter_set = true;
+                        } else {
+                            if (presetter_drop_filter_slot_idx(p, idx, cell_idx)) {
+                                filter_set = true;
+                            }
+                        }
+                    }
+
+                    if (filter_set) {
+                        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+                    }
+
+                    jbox_redraw((t_jbox *)p);
+                    return;
+                }
+
                 p->j_editing_preset_name = false;
                 p->j_confirm_preset_store = true;
                 p->j_confirm_preset_cell = cell_idx;
