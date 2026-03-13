@@ -81,7 +81,7 @@
 // Grid
 #define GRID_OFFSET_X 5
 #define GRID_OFFSET_Y 3
-#define CELL_SIZE 7.0
+#define CELL_SIZE 8.0
 #define CELL_PADDING 3.5
 #define CELL_TOTAL_SIZE (CELL_SIZE + CELL_PADDING)
 
@@ -137,7 +137,7 @@
 /** Filters **/
 
 #define FILTER_CELL_MIN_WIDTH 120
-#define FILTER_CELL_HEIGHT 19
+#define FILTER_CELL_HEIGHT 20
 #define FILTER_GRID_PADDING 5
 
 // -----------------------------------------------------------------------------
