@@ -2653,7 +2653,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba bg_color_off;
     t_jrgba text_color_off;
 
-    if (p->j_write_filter_button_down) {
+    if (p->j_write_button_down) {
         jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
         jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
 
@@ -2668,7 +2668,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_write_filter_button_down) {
+    if (!p->j_write_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
@@ -3198,7 +3198,7 @@ void presetter_draw_write_filter_button(t_presetter *p, t_jgraphics *g, t_rect *
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_write_button_down) {
+    if (!p->j_write_filter_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
@@ -3255,7 +3255,7 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
     t_jrgba text_color;
     t_jrgba text_color_off;
 
-    if (p->j_confirm_filter_cancel_button_down) {
+    if (p->j_confirm_filter_ok_button_down) {
         presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
         jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
     } else {
@@ -3417,7 +3417,7 @@ void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect 
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (!p->j_confirm_filter_ok_button_down) {
+    if (!p->j_clear_filters_button_down) {
         jgraphics_set_source_jrgba(g, &text_color);
         jgraphics_stroke_preserve(g);
     }
