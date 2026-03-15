@@ -5,6 +5,7 @@
 #include "ext_mess.h"
 #include "ext_obex.h"
 #include "ext_proto.h"
+#include "ext_strings.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "max_types.h"
@@ -123,7 +124,7 @@
 #define PAGINATION_ARROW_PADDING 2
 
 // Tabs
-#define TAB_MARGIN 5;
+#define TAB_MARGIN 5
 #define TAB_FONT_SIZE 9
 #define TAB_PADDING_X 5
 #define TAB_PADDING_Y 2.5
@@ -135,6 +136,8 @@
 #define FILTER_CELL_MIN_WIDTH 120
 #define FILTER_CELL_HEIGHT 20
 #define FILTER_GRID_PADDING 5
+
+#define CLEAR_FILTERS_BUTTON_TEXT "CLEAR"
 
 // -----------------------------------------------------------------------------
 // Structs
@@ -269,6 +272,10 @@ typedef struct _presetter {
 
     // Pagination
     long j_filter_pagination_number;
+
+    // Clear
+    char j_clear_filters_status_text[512];
+    bool j_clear_filters_button_down;
 } t_presetter;
 
 // -----------------------------------------------------------------------------
@@ -513,6 +520,9 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
             // doesn't exist. that is not good.
             p->j_filters = dictionary_new();
         }
+
+        // Clear
+        p->j_clear_filters_button_down = false;
 
         jbox_ready(&p->j_box);
     }
@@ -922,6 +932,24 @@ bool presetter_drop_filter_slot_idx(t_presetter *p, long idx, long slot) {
     return false;
 }
 
+/* Filter Hashtab Utilities */
+
+void presetter_set_clear_filter_status(t_presetter *p) {
+    long size = hashtab_getsize(p->j_applied_filters);
+    char *fmt_text = "";
+
+    if (size == 0) {
+        p->j_clear_filters_status_text[0] = '\0';
+        return;
+    } else if (size == 1) {
+        fmt_text = "%ld filter applied";
+    } else {
+        fmt_text = "%ld filters applied";
+    }
+
+    snprintf_zero(p->j_clear_filters_status_text, sizeof(p->j_clear_filters_status_text), fmt_text, size);
+}
+
 bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
     t_filter_result result;
 
@@ -929,7 +957,14 @@ bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
         return false;
     }
 
-    return hashtab_storelong(p->j_applied_filters, result.index, (t_atom_long) true) == MAX_ERR_NONE;
+    bool stored = hashtab_storelong(p->j_applied_filters, result.index, (t_atom_long) true) == MAX_ERR_NONE;
+
+    if (stored) {
+        presetter_set_clear_filter_status(p);
+        return true;
+    }
+
+    return false;
 }
 
 bool presetter_apply_filter_idx(t_presetter *p, long idx) {
@@ -938,7 +973,15 @@ bool presetter_apply_filter_idx(t_presetter *p, long idx) {
     if (!dict)
         return false;
 
-    return hashtab_storelong(p->j_applied_filters, presetter_long_to_sym(idx), (t_atom_long) true) == MAX_ERR_NONE;
+    bool stored =
+        hashtab_storelong(p->j_applied_filters, presetter_long_to_sym(idx), (t_atom_long) true) == MAX_ERR_NONE;
+
+    if (stored) {
+        presetter_set_clear_filter_status(p);
+        return true;
+    }
+
+    return false;
 }
 
 bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
@@ -948,11 +991,35 @@ bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
         return false;
     }
 
-    return hashtab_delete(p->j_applied_filters, result.index) == MAX_ERR_NONE;
+    if (hashtab_delete(p->j_applied_filters, result.index) == MAX_ERR_NONE) {
+        presetter_set_clear_filter_status(p);
+        return true;
+    }
+
+    return false;
+}
+
+bool presetter_reset_filter_idx(t_presetter *p, long idx) {
+    t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
+
+    if (!dict)
+        return false;
+
+    if (!presetter_lookup_filter_slot(p, idx)) {
+        return false;
+    }
+
+    if (hashtab_delete(p->j_applied_filters, presetter_long_to_sym(idx)) == MAX_ERR_NONE) {
+        presetter_set_clear_filter_status(p);
+        return true;
+    }
+
+    return false;
 }
 
 void presetter_reset_filter_all(t_presetter *p) {
     hashtab_clear(p->j_applied_filters);
+    presetter_set_clear_filter_status(p);
 }
 
 bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
@@ -1880,6 +1947,28 @@ bool presetter_in_confirm_filter_cancel_button_bounds(t_presetter *p, t_rect *re
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
+t_bounds presetter_get_clear_filters_button_bounds(t_presetter *p, t_rect *rect) {
+    t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
+
+    double text_width;
+    double text_height;
+
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
+    jgraphics_text_measure(p->offscreen, p->j_clear_filters_status_text, &text_width, &text_height);
+
+    t_bounds bounds;
+    bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
+    bounds.y = gbounds.y + gbounds.height + CONFIRM_BUTTON_OFFSET_Y;
+    presetter_measure_button(p, CLEAR_FILTERS_BUTTON_TEXT, &bounds.width, &bounds.height);
+    return bounds;
+}
+
+bool presetter_in_clear_filters_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
+    t_bounds bounds = presetter_get_clear_filters_button_bounds(p, rect);
+    return presetter_generic_in_bounds(&bounds, pt);
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
@@ -2199,6 +2288,11 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         jbox_redraw((t_jbox *)p);
         return;
     }
+
+    if (p->j_clear_filters_status_text[0] != '\0' && presetter_in_clear_filters_button_bounds(p, &rect, &pt)) {
+        p->j_clear_filters_button_down = true;
+        jbox_redraw((t_jbox *)p);
+    }
 }
 
 void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers) {
@@ -2269,6 +2363,13 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
             p->j_filter_pagination_number = p->j_filter_pagination_number - 1;
             p->j_selected_filter_cell = -1;
         }
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_clear_filters_button_down) {
+        p->j_clear_filters_button_down = false;
+        presetter_reset_filter_all(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -2666,7 +2767,12 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
 
-    const char *status_text = presetter_get_preset_status_text(p);
+    const char *status_text;
+    if (p->j_clear_filters_status_text[0] == '\0') {
+        status_text = presetter_get_preset_status_text(p);
+    } else {
+        status_text = p->j_clear_filters_status_text;
+    }
 
     double max_width = bounds.width;
     double text_width;
@@ -2696,7 +2802,7 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jrgba color;
     t_jrgba color_off;
 
-    if (p->j_preset_status_override != PRESETTER_NO_STATUS) {
+    if (p->j_preset_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
         jcolor_getcolor(STATUS_CONFIRM_TEXT_COLOR_SYM, &color, &color_off);
     } else {
         presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
@@ -2709,6 +2815,9 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
 }
 
 void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_clear_filters_status_text[0] != '\0')
+        return;
+
     if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
@@ -2751,6 +2860,9 @@ void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_r
 }
 
 void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_clear_filters_status_text[0] != '\0')
+        return;
+
     if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
@@ -3123,6 +3235,9 @@ void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 }
 
 void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_clear_filters_status_text[0] != '\0')
+        return;
+
     if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
         return;
 
@@ -3165,6 +3280,9 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
 }
 
 void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (p->j_clear_filters_status_text[0] != '\0')
+        return;
+
     if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
         return;
 
@@ -3215,7 +3333,12 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
 
-    const char *status_text = presetter_get_filter_status_text(p);
+    const char *status_text;
+    if (p->j_clear_filters_status_text[0] == '\0') {
+        status_text = presetter_get_filter_status_text(p);
+    } else {
+        status_text = p->j_clear_filters_status_text;
+    }
 
     double max_width = bounds.width;
     double text_width;
@@ -3244,7 +3367,7 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
 
     t_jrgba color;
 
-    if (p->j_filter_status_override != PRESETTER_NO_STATUS) {
+    if (p->j_filter_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
         presetter_hex_to_rgba(&color, PATCHER_OBJECT_COLOR_HEX, 1);
     } else {
         presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
@@ -3253,6 +3376,58 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_move_to(g, bounds.x, bounds.y + extents.height);
     jgraphics_text_path(g, visible);
+    jgraphics_fill(g);
+}
+
+void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    if (hashtab_getsize(p->j_applied_filters) == 0)
+        return;
+
+    t_bounds bounds = presetter_get_clear_filters_button_bounds(p, rect);
+
+    t_jrgba bg_color;
+    t_jrgba bg_color_off;
+    t_jrgba text_color;
+    t_jrgba text_color_off;
+
+    if (p->j_selected_tab == gensym("presets")) {
+        if (p->j_clear_filters_button_down) {
+            jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
+            jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        } else {
+            jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+            jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        }
+    } else {
+        if (p->j_clear_filters_button_down) {
+            presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        } else {
+            jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
+            presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+        }
+    }
+
+    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
+
+    if (!p->j_confirm_filter_ok_button_down) {
+        jgraphics_set_source_jrgba(g, &text_color);
+        jgraphics_stroke_preserve(g);
+    }
+
+    jgraphics_set_source_jrgba(g, &bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, &text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
+    jgraphics_text_path(g, CLEAR_FILTERS_BUTTON_TEXT);
     jgraphics_fill(g);
 }
 
@@ -3287,6 +3462,7 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
         presetter_draw_filter_status(p, g, &rect);
     }
 
+    presetter_draw_clear_filters_button(p, g, &rect);
     presetter_draw_right_arrow(p, g, &rect);
     presetter_draw_pagination_number(p, g, &rect);
     presetter_draw_left_arrow(p, g, &rect);
