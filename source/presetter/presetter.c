@@ -6,6 +6,7 @@
 #include "ext_obex.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
+#include "ext_sysmem.h"
 #include "jgraphics.h"
 #include "jpatcher_api.h"
 #include "max_types.h"
@@ -1070,6 +1071,7 @@ bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
         }
     }
 
+    sysmem_freeptr(kvs);
     return found_match;
 }
 
@@ -2132,6 +2134,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                         dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
                     }
 
+                    sysmem_freeptr(kvs);
                     jbox_redraw((t_jbox *)p);
                     return;
                 }
