@@ -506,6 +506,10 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_filter_status = PRESETTER_NO_STATUS;
         p->j_filter_status_override = PRESETTER_NO_STATUS;
 
+        // Fitler name
+        p->j_editing_filter_name = false;
+        p->j_write_filter_button_down = false;
+
         // Filter Confirm
         p->j_confirm_filter_cell = -1;
         p->j_confirm_filter_delete = false;
