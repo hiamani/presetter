@@ -1197,7 +1197,7 @@ void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
 
         snprintf_zero(
-            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d", cell_idx
+            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %ld", cell_idx
         );
 
         p->j_preset_status = PRESETTER_IDLE_STATUS;
@@ -1384,7 +1384,7 @@ void presetter_handle_recall(t_presetter *p, long cell_idx) {
         snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
 
         snprintf_zero(
-            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %d",
+            p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Selected Preset %ld",
             p->j_selected_preset_cell
         );
 
@@ -1403,7 +1403,7 @@ void presetter_handle_store(t_presetter *p, long cell_idx) {
     if (!ps)
         return;
 
-    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Stored Preset %d", cell_idx);
+    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Stored Preset %ld", cell_idx);
     p->j_preset_status = PRESETTER_IDLE_STATUS;
 
     t_atom a;
@@ -1420,7 +1420,7 @@ void presetter_handle_delete(t_presetter *p, long cell_idx) {
     if (!ps)
         return;
 
-    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Deleted Preset %d", cell_idx);
+    snprintf_zero(p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Deleted Preset %ld", cell_idx);
     p->j_preset_status = PRESETTER_IDLE_STATUS;
 
     if (p->j_selected_preset_cell == cell_idx) {
@@ -1442,7 +1442,7 @@ void presetter_handle_preset_rename(t_presetter *p) {
         return;
 
     snprintf_zero(
-        p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Renamed Preset %d",
+        p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Renamed Preset %ld",
         p->j_selected_preset_cell
     );
     p->j_editing_preset_name = false;
@@ -1704,7 +1704,7 @@ t_bounds presetter_get_pagination_number_bounds(t_presetter *p, t_rect *rect) {
     double text_height;
 
     char number_text[16];
-    snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
+    snprintf_zero(number_text, sizeof(number_text), "%ld", p->j_preset_pagination_number);
 
     jgraphics_select_font_face(
         p->offscreen, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
@@ -2048,7 +2048,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 p->j_confirm_preset_cell = cell_idx;
                 p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
                 snprintf_zero(
-                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Delete Preset %d?",
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Delete Preset %ld?",
                     cell_idx
                 );
                 jbox_redraw((t_jbox *)p);
@@ -2144,7 +2144,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 p->j_confirm_preset_cell = cell_idx;
                 p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
                 snprintf_zero(
-                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Store Preset %d?",
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Store Preset %ld?",
                     cell_idx
                 );
                 jbox_redraw((t_jbox *)p);
@@ -2162,7 +2162,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 p->j_confirm_filter_cell = cell_idx;
                 p->j_filter_status_override = PRESETTER_CONFIRM_STATUS;
                 snprintf_zero(
-                    p->j_confirm_filter_status_text, sizeof(p->j_confirm_filter_status_text), "Delete Filter %d?",
+                    p->j_confirm_filter_status_text, sizeof(p->j_confirm_filter_status_text), "Delete Filter %ld?",
                     cell_idx
                 );
                 jbox_redraw((t_jbox *)p);
@@ -2217,7 +2217,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             }
 
             snprintf_zero(
-                p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Selected Filter %d",
+                p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Selected Filter %ld",
                 p->j_selected_filter_cell
             );
 
@@ -2397,12 +2397,12 @@ void presetter_mousemove(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
             if (name && name != gensym("<(unnamed)>")) {
                 snprintf_zero(
-                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %d: %s",
+                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %ld: %s",
                     p->j_hovered_preset_cell, name->s_name
                 );
             } else {
                 snprintf_zero(
-                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %d",
+                    p->j_preset_hover_status_text, sizeof(p->j_preset_hover_status_text), "Preset %ld",
                     p->j_hovered_preset_cell
                 );
             }
@@ -2941,9 +2941,9 @@ void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *re
 
     char number_text[16];
     if (p->j_selected_tab == gensym("presets")) {
-        snprintf_zero(number_text, sizeof(number_text), "%d", p->j_preset_pagination_number);
+        snprintf_zero(number_text, sizeof(number_text), "%ld", p->j_preset_pagination_number);
     } else {
-        snprintf_zero(number_text, sizeof(number_text), "%d", p->j_filter_pagination_number);
+        snprintf_zero(number_text, sizeof(number_text), "%ld", p->j_filter_pagination_number);
     }
 
     jgraphics_move_to(g, bounds.x, bounds.y + bounds.height);
