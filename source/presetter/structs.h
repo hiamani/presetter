@@ -16,7 +16,7 @@ typedef struct _grid_dim {
     int rows;
 } t_grid_dim;
 
-typedef struct _grid_bounds {
+typedef struct _t_bounds {
     double x;
     double y;
     double width;
