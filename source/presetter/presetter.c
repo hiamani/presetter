@@ -13,6 +13,7 @@
 #include <math.h>
 
 // Local Includes
+#include "colors.h"
 #include "constants.h"
 #include "drawing.h"
 #include "structs.h"
@@ -298,15 +299,6 @@ t_symbol *presetter_long_to_sym(long i) {
 
 void presetter_redraw_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *argv) {
     jbox_redraw((t_jbox *)p);
-}
-
-/* Colors Utilities */
-
-void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha) {
-    unsigned int r, g, b;
-    const char *h = (hex[0] == '#') ? hex + 1 : hex;
-    sscanf(h, "%2x%2x%2x", &r, &g, &b);
-    jrgba_set(color, r / 255.0, g / 255.0, b / 255.0, alpha);
 }
 
 /* Hashtab Utilities */
@@ -2329,12 +2321,9 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         presetter_trim_text_right(g, text, bounds.width, visible, sizeof(visible));
     }
 
-    // Draw editing background
-    if (p->j_editing_preset_name || p->j_editing_filter_name) {
+    if (editing) {
         t_jrgba bg_color;
-        t_jrgba _bg_color_off;
-
-        jcolor_getcolor(PRESET_NAME_EDITING_BG_COLOR_SYM, &bg_color, &_bg_color_off);
+        presetter_resolve_color(PRESET_NAME_EDITING_BG_COLOR, &bg_color);
 
         jgraphics_set_source_jrgba(g, &bg_color);
         jgraphics_rectangle(g, bounds.x, bounds.y, text_width, bounds.height);
@@ -2345,22 +2334,21 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     double text_y = bounds.y + extents.ascent;
 
     t_jrgba name_color;
-    t_jrgba _name_color_off;
 
     if (p->j_selected_tab == gensym("presets") && p->j_preset_name[0] != '\0') {
         if (p->j_editing_preset_name) {
-            jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
+            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color);
         } else {
-            jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
+            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color);
         }
     } else if (p->j_selected_tab == gensym("filters") && p->j_filter_name[0] != '\0') {
         if (p->j_editing_filter_name) {
-            jcolor_getcolor(PRESET_NAME_TEXT_EDITING_COLOR_SYM, &name_color, &_name_color_off);
+            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color);
         } else {
-            jcolor_getcolor(PRESET_NAME_TEXT_DEFAULT_COLOR_SYM, &name_color, &_name_color_off);
+            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color);
         }
     } else {
-        presetter_hex_to_rgba(&name_color, PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX, 1);
+        presetter_resolve_color(PRESET_NAME_TEXT_UNSELECTED_COLOR, &name_color);
     }
 
     jgraphics_set_source_jrgba(g, &name_color);
@@ -2376,20 +2364,16 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba bg_color;
     t_jrgba text_color;
-    t_jrgba bg_color_off;
-    t_jrgba text_color_off;
 
     if (p->j_write_button_down) {
-        jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
-
+        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color);
     } else if (p->j_editing_preset_name) {
-        jcolor_getcolor(WRITE_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(WRITE_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
-
+        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color);
     } else {
-        presetter_hex_to_rgba(&bg_color, WRITE_BUTTON_INACTIVE_BG_COLOR_HEX, 1);
-        presetter_hex_to_rgba(&text_color, WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2427,17 +2411,15 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
 
         if (p->j_selected_preset_cell == cell_idx) {
-            t_jrgba color_off;
-            jcolor_getcolor(GRID_SELECTED_CELL_COLOR_SYM, &color, &color_off);
+            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color);
         } else if (p->j_hovered_preset_cell == cell_idx) {
-            presetter_hex_to_rgba(&color, GRID_HOVERED_CELL_COLOR_HEX, 1);
+            presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color);
         } else if (filtered_cell) {
-            t_jrgba color_off;
-            jcolor_getcolor(GRID_SELECTED_CELL_COLOR_SYM, &color, &color_off);
+            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color);
         } else if (name) {
-            presetter_hex_to_rgba(&color, GRID_STORED_CELL_COLOR_HEX, 1);
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color);
         } else {
-            presetter_hex_to_rgba(&color, GRID_DEFAULT_CELL_COLOR_HEX, 1);
+            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color);
         }
 
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
@@ -2511,12 +2493,11 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     presetter_trim_text_right(g, status_text, bounds.width, visible, sizeof(visible));
 
     t_jrgba color;
-    t_jrgba color_off;
 
     if (p->j_preset_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
-        jcolor_getcolor(STATUS_CONFIRM_TEXT_COLOR_SYM, &color, &color_off);
+        presetter_resolve_color(STATUS_CONFIRM_TEXT_COLOR, &color);
     } else {
-        presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(STATUS_TEXT_COLOR, &color);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -2535,16 +2516,14 @@ void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_r
     t_bounds bounds = presetter_get_confirm_preset_ok_button_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_confirm_preset_ok_button_down) {
-        jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2580,16 +2559,14 @@ void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g,
     t_bounds bounds = presetter_get_confirm_preset_cancel_button_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_confirm_preset_cancel_button_down) {
-        jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2620,9 +2597,9 @@ void presetter_draw_right_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba color;
     if (p->j_pagination_right_arrow_down) {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color);
     } else {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -2638,7 +2615,7 @@ void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *re
     t_bounds bounds = presetter_get_pagination_number_bounds(p, rect);
 
     t_jrgba color;
-    presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+    presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_select_font_face(g, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(g, PAGINATION_NUMBER_FONT_SIZE);
@@ -2660,13 +2637,13 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba color;
     if (p->j_pagination_left_arrow_down) {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_DOWN_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color);
     } else if (p->j_selected_tab == gensym("presets") && p->j_preset_pagination_number > 1) {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
     } else if (p->j_selected_tab == gensym("filters") && p->j_filter_pagination_number > 1) {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_ON_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
     } else {
-        presetter_hex_to_rgba(&color, PAGINATION_ARROW_OFF_COLOR_HEX, 1);
+        presetter_resolve_color(PAGINATION_ARROW_OFF_COLOR, &color);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -2682,7 +2659,7 @@ void presetter_draw_tab_bar(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_jrgba bg_color;
-    presetter_hex_to_rgba(&bg_color, TAB_BAR_COLOR_HEX, 1);
+    presetter_resolve_color(TAB_BAR_COLOR, &bg_color);
 
     jgraphics_rectangle(g, bounds.x, bounds.y, rect->width, bounds.height);
     jgraphics_set_source_jrgba(g, &bg_color);
@@ -2693,16 +2670,14 @@ void presetter_draw_presets_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_selected_tab == gensym("presets")) {
-        jcolor_getcolor(TAB_PRESETS_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(TAB_PRESETS_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(TAB_PRESETS_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(TAB_PRESETS_ON_TEXT_COLOR, &text_color);
     } else {
-        presetter_hex_to_rgba(&bg_color, TAB_PRESETS_UP_BG_COLOR_HEX, 1);
-        presetter_hex_to_rgba(&text_color, TAB_PRESETS_UP_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(TAB_PRESETS_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(TAB_PRESETS_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2727,14 +2702,13 @@ void presetter_draw_filters_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba bg_color;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_selected_tab == gensym("filters")) {
-        presetter_hex_to_rgba(&bg_color, TAB_FILTERS_ON_BG_COLOR_HEX, 1);
-        jcolor_getcolor(TAB_FILTERS_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(TAB_FILTERS_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(TAB_FILTERS_ON_TEXT_COLOR, &text_color);
     } else {
-        presetter_hex_to_rgba(&bg_color, TAB_FILTERS_UP_BG_COLOR_HEX, 1);
-        presetter_hex_to_rgba(&text_color, TAB_FILTERS_UP_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(TAB_FILTERS_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(TAB_FILTERS_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2763,15 +2737,15 @@ void presetter_draw_filter_grid_row(
         double x = (double)i * (cell_width + FILTER_GRID_PADDING) + 8.5;
         int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_filter_grid_offset(p, dim);
 
-        t_jrgba color;
+        t_jrgba bg_color;
         if (cell_idx == p->j_hovered_filter_cell) {
-            presetter_hex_to_rgba(&color, "#2A2A2A", 1);
+            presetter_resolve_color(FILTER_GRID_HOVERED_CELL_BG_COLOR, &bg_color);
         } else {
-            presetter_hex_to_rgba(&color, "#222222", 1);
+            presetter_resolve_color(FILTER_GRID_CELL_BG_COLOR, &bg_color);
         }
 
         jgraphics_rectangle_rounded(g, x, y, cell_width, FILTER_CELL_HEIGHT, 5, 5);
-        jgraphics_set_source_jrgba(g, &color);
+        jgraphics_set_source_jrgba(g, &bg_color);
         jgraphics_fill(g);
 
         jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
@@ -2781,8 +2755,7 @@ void presetter_draw_filter_grid_row(
         jgraphics_font_extents(g, &extents);
 
         t_jrgba stroke_color;
-        t_jrgba stroke_color_off;
-        jcolor_getcolor(gensym("live_arranger_grid_tiles"), &stroke_color, &stroke_color_off);
+        presetter_resolve_color(FILTER_GRID_SELECTED_CELL_STROKE_COLOR, &stroke_color);
 
         t_symbol *name = NULL;
         t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
@@ -2796,14 +2769,13 @@ void presetter_draw_filter_grid_row(
             hashtab_lookuplong(p->j_applied_filters, presetter_long_to_sym(cell_idx), &val);
 
             t_jrgba text_color;
-            t_jrgba text_color_off;
 
             if (val) {
-                presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_TEXT_COLOR, &text_color);
             } else if (p->j_selected_filter_cell == cell_idx) {
-                jcolor_getcolor(gensym("live_arranger_grid_tiles"), &text_color, &text_color_off);
+                presetter_resolve_color(FILTER_GRID_SELECTED_TEXT_COLOR, &text_color);
             } else {
-                presetter_hex_to_rgba(&text_color, "#999999", 1);
+                presetter_resolve_color(FILTER_GRID_DEFAULT_TEXT_COLOR, &text_color);
             }
 
             jgraphics_set_source_jrgba(g, &text_color);
@@ -2814,14 +2786,13 @@ void presetter_draw_filter_grid_row(
             jgraphics_fill(g);
 
             t_jrgba circle_color;
-            t_jrgba circle_color_off;
 
             if (val) {
-                presetter_hex_to_rgba(&circle_color, PATCHER_OBJECT_COLOR_HEX, 1);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CIRCLE_COLOR, &circle_color);
             } else if (p->j_selected_filter_cell == cell_idx) {
-                jcolor_getcolor(gensym("live_arranger_grid_tiles"), &circle_color, &circle_color_off);
+                presetter_resolve_color(FILTER_GRID_SELECTED_CIRCLE_COLOR, &circle_color);
             } else {
-                presetter_hex_to_rgba(&circle_color, "#999999", 1);
+                presetter_resolve_color(FILTER_GRID_DEFAULT_CIRCLE_COLOR, &circle_color);
             }
 
             jgraphics_set_source_jrgba(g, &circle_color);
@@ -2829,18 +2800,18 @@ void presetter_draw_filter_grid_row(
             jgraphics_fill(g);
 
             if (val) {
-                presetter_hex_to_rgba(&stroke_color, PATCHER_OBJECT_COLOR_HEX, 1);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CELL_STROKE_COLOR, &stroke_color);
             }
         } else {
             t_jrgba circle_color;
-            presetter_hex_to_rgba(&circle_color, "#555555", 1);
+            presetter_resolve_color(FILTER_GRID_EMPTY_CIRCLE_COLOR, &circle_color);
             jgraphics_set_source_jrgba(g, &circle_color);
             jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
             jgraphics_fill(g);
 
             t_jrgba text_color;
-            presetter_hex_to_rgba(&text_color, "#555555", 1);
-            presetter_hex_to_rgba(&stroke_color, "#555555", 1);
+            presetter_resolve_color(FILTER_GRID_EMPTY_TEXT_COLOR, &text_color);
+            presetter_resolve_color(FILTER_GRID_EMPTY_CELL_STROKE_COLOR, &stroke_color);
 
             double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
             jgraphics_set_source_jrgba(g, &text_color);
@@ -2862,20 +2833,16 @@ void presetter_draw_write_filter_button(t_presetter *p, t_jgraphics *g, t_rect *
 
     t_jrgba bg_color;
     t_jrgba text_color;
-    t_jrgba bg_color_off;
-    t_jrgba text_color_off;
 
     if (p->j_write_filter_button_down) {
-        jcolor_getcolor(WRITE_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(WRITE_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
-
+        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color);
     } else if (p->j_editing_filter_name) {
-        jcolor_getcolor(WRITE_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        jcolor_getcolor(WRITE_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
-
+        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color);
     } else {
-        presetter_hex_to_rgba(&bg_color, WRITE_BUTTON_INACTIVE_BG_COLOR_HEX, 1);
-        presetter_hex_to_rgba(&text_color, WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2933,16 +2900,14 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
     t_bounds bounds = presetter_get_confirm_filter_ok_button_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_confirm_filter_ok_button_down) {
-        presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
-        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -2978,16 +2943,14 @@ void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g,
     t_bounds bounds = presetter_get_confirm_filter_cancel_button_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_confirm_filter_cancel_button_down) {
-        presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
-        jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
     } else {
-        jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-        presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -3035,9 +2998,9 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jrgba color;
 
     if (p->j_filter_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
-        presetter_hex_to_rgba(&color, PATCHER_OBJECT_COLOR_HEX, 1);
+        presetter_resolve_color(PATCHER_OBJECT_COLOR, &color);
     } else {
-        presetter_hex_to_rgba(&color, STATUS_TEXT_COLOR_HEX, 1);
+        presetter_resolve_color(STATUS_TEXT_COLOR, &color);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -3053,25 +3016,23 @@ void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect 
     t_bounds bounds = presetter_get_clear_filters_button_bounds(p, rect);
 
     t_jrgba bg_color;
-    t_jrgba bg_color_off;
     t_jrgba text_color;
-    t_jrgba text_color_off;
 
     if (p->j_selected_tab == gensym("presets")) {
         if (p->j_clear_filters_button_down) {
-            jcolor_getcolor(CONFIRM_BUTTON_ON_BG_COLOR_SYM, &bg_color, &bg_color_off);
-            jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+            presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+            presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
         } else {
-            jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-            jcolor_getcolor(CONFIRM_BUTTON_UP_TEXT_COLOR_SYM, &text_color, &text_color_off);
+            presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+            presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
         }
     } else {
         if (p->j_clear_filters_button_down) {
-            presetter_hex_to_rgba(&bg_color, PATCHER_OBJECT_COLOR_HEX, 1);
-            jcolor_getcolor(CONFIRM_BUTTON_ON_TEXT_COLOR_SYM, &text_color, &text_color_off);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
         } else {
-            jcolor_getcolor(CONFIRM_BUTTON_UP_BG_COLOR_SYM, &bg_color, &bg_color_off);
-            presetter_hex_to_rgba(&text_color, PATCHER_OBJECT_COLOR_HEX, 1);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
         }
     }
 
@@ -3107,7 +3068,7 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     jbox_get_rect_for_view((t_object *)p, patcherview, &rect);
 
     t_jrgba color;
-    presetter_hex_to_rgba(&color, BG_COLOR_HEX, 1);
+    presetter_resolve_color(BG_COLOR, &color);
 
     jgraphics_rectangle_rounded(g, 0, 0, rect.width, rect.height, 4, 4);
     jgraphics_set_source_jrgba(g, &color);
