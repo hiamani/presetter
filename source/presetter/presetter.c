@@ -537,13 +537,13 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
 void presetter_free(t_presetter *p) {
     object_free(p->j_slots);
-    jbox_free((t_jbox *)p);
+    object_free(p->j_filters);
     if (p->j_pattrstorage) {
         object_detach_byptr(p, p->j_pattrstorage);
     }
     jgraphics_destroy(p->offscreen);
     jgraphics_surface_destroy(p->surface);
-    // object_free(p->j_filters);
+    jbox_free((t_jbox *)p);
 }
 
 // -----------------------------------------------------------------------------
