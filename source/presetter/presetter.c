@@ -12,272 +12,10 @@
 #include "max_types.h"
 #include <math.h>
 
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-/* Slot */
-
-#define SLOT_NAME_LEN 1024
-
-/* Colors */
-
-// Global
-#define PATCHER_OBJECT_COLOR_HEX "#9EBEF3"
-#define BG_COLOR_HEX "#1E1E1E"
-
-// Preset Name
-#define PRESET_NAME_EDITING_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX "#555555"
-#define PRESET_NAME_TEXT_EDITING_COLOR_SYM gensym("live_contrast_frame")
-#define PRESET_NAME_TEXT_DEFAULT_COLOR_SYM gensym("live_arranger_grid_tiles")
-
-// Write Button
-#define WRITE_BUTTON_INACTIVE_BG_COLOR_HEX BG_COLOR_HEX
-#define WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX "#444444"
-#define WRITE_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
-#define WRITE_BUTTON_UP_TEXT_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define WRITE_BUTTON_ON_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define WRITE_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-// Grid
-#define GRID_SELECTED_CELL_COLOR_SYM gensym("live_display_handle_two")
-#define GRID_HOVERED_CELL_COLOR_HEX "#999999"
-#define GRID_STORED_CELL_COLOR_HEX "#666666"
-#define GRID_DEFAULT_CELL_COLOR_HEX "#333333"
-
-// Status
-#define STATUS_TEXT_COLOR_HEX "#999999"
-#define STATUS_CONFIRM_TEXT_COLOR_SYM gensym("live_display_handle_two")
-
-// Confirm
-#define CONFIRM_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
-#define CONFIRM_BUTTON_UP_TEXT_COLOR_SYM gensym("live_display_handle_two")
-#define CONFIRM_BUTTON_ON_BG_COLOR_SYM gensym("live_display_handle_two")
-#define CONFIRM_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-// Pagination
-#define PAGINATION_ARROW_OFF_COLOR_HEX "#444444"
-#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
-#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-
-// Tabs
-#define TAB_PRESETS_UP_BG_COLOR_HEX "#181818"
-#define TAB_PRESETS_UP_TEXT_COLOR_HEX "#555555"
-#define TAB_PRESETS_ON_BG_COLOR_SYM gensym("live_display_handle_two")
-#define TAB_PRESETS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-#define TAB_FILTERS_UP_BG_COLOR_HEX "#181818"
-#define TAB_FILTERS_UP_TEXT_COLOR_HEX "#555555"
-#define TAB_FILTERS_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-#define TAB_FILTERS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-#define TAB_BAR_COLOR_HEX "#181818"
-
-/* Dimensions & Text */
-
-// Grid
-#define GRID_OFFSET_X 5
-#define GRID_OFFSET_Y 3
-#define CELL_SIZE 8.0
-#define CELL_PADDING 3.5
-#define CELL_TOTAL_SIZE (CELL_SIZE + CELL_PADDING)
-
-// Write Name
-#define WRITE_NAME_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
-#define WRITE_NAME_OFFSET_Y 9
-#define WRITE_NAME_MARGIN_RIGHT 4
-#define WRITE_NAME_FONT_SIZE 10
-
-// Buttons
-#define BUTTON_FONT_SIZE 9
-#define BUTTON_PADDING_X 4
-#define BUTTON_PADDING_Y 2
-
-// Write Button
-#define WRITE_BUTTON_TEXT "WRITE NAME"
-#define WRITE_FILTER_BUTTON_TEXT "WRITE FILTER"
-#define WRITE_BUTTON_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
-#define WRITE_BUTTON_OFFSET_Y 8
-
-// Status
-#define STATUS_FONT_SIZE 10
-#define STATUS_OFFSET_X 8
-#define STATUS_OFFSET_Y 4
-#define STATUS_PADDING_RIGHT 2
-
-// Confirm
-#define CONFIRM_OK_BUTTON_TEXT "OK"
-#define CONFIRM_OK_BUTTON_MARGIN_LEFT 12
-#define CONFIRM_CANCEL_BUTTON_TEXT "CANCEL"
-#define CONFIRM_CANCEL_BUTTON_MARGIN_LEFT 8
-#define CONFIRM_BUTTON_OFFSET_Y 5
-
-// Pagination
-#define PAGINATION_MARGIN_TOP 0
-#define PAGINATION_MARGIN_RIGHT 9
-#define PAGINATION_NUMBER_FONT "Arial"
-#define PAGINATION_NUMBER_FONT_SIZE 10
-#define PAGINATION_LEFT_ARROW_TEXT "‹"
-#define PAGINATION_RIGHT_ARROW_TEXT "›"
-#define PAGINATION_ARROW_FONT "Menlo"
-#define PAGINATION_ARROW_FONT_SIZE 13
-#define PAGINATION_ARROW_PADDING 2
-
-// Tabs
-#define TAB_MARGIN 5
-#define TAB_FONT_SIZE 9
-#define TAB_PADDING_X 5
-#define TAB_PADDING_Y 2.5
-#define TAB_PRESETS_TEXT "PRESETS"
-#define TAB_FILTERS_TEXT "FILTERS"
-
-/** Filters **/
-
-#define FILTER_CELL_MIN_WIDTH 120
-#define FILTER_CELL_HEIGHT 20
-#define FILTER_GRID_PADDING 5
-
-#define CLEAR_FILTERS_BUTTON_TEXT "CLEAR"
-
-// -----------------------------------------------------------------------------
-// Structs
-// -----------------------------------------------------------------------------
-
-typedef struct _slot {
-    char name[SLOT_NAME_LEN];
-} t_slot;
-
-typedef struct _grid_dim {
-    int columns;
-    int rows;
-} t_grid_dim;
-
-typedef struct _grid_bounds {
-    double x;
-    double y;
-    double width;
-    double height;
-} t_bounds;
-
-typedef struct _cell_pos {
-    int x;
-    int y;
-} t_cell_pos;
-
-typedef enum {
-    PRESETTER_NO_STATUS,
-    PRESETTER_IDLE_STATUS,
-    PRESETTER_HOVER_STATUS,
-    PRESETTER_CONFIRM_STATUS
-} t_status;
-
-typedef struct _t_filter_result {
-    t_dictionary *dict;
-    t_symbol *index;
-} t_filter_result;
-
-typedef struct _presetter {
-    // Base
-    t_jbox j_box;
-
-    // Inlets
-    long j_inlet_num;
-
-    // Outlets
-    void *j_outlet1;
-
-    // Patcher
-    short j_patcher_path;
-
-    // Attributes
-    t_symbol *j_pattrstorage_name;
-
-    // pattrstorage
-    t_object *j_pattrstorage;
-
-    // Slots
-    t_hashtab *j_slots;
-
-    // jgraphics
-    t_jsurface *surface;
-    t_jgraphics *offscreen;
-
-    // Cells
-    long j_hovered_preset_cell;
-    long j_last_hovered_preset_cell;
-    long j_selected_preset_cell;
-
-    // Preset Name
-    bool j_editing_preset_name;
-    char j_preset_name[512];
-
-    // Write Button
-    char *j_write_button_text;
-    bool j_write_button_down;
-
-    // Status line
-    t_status j_preset_status;
-    t_status j_preset_status_override;
-    char j_preset_idle_status_text[512];
-    char j_preset_hover_status_text[1024];
-    char j_confirm_preset_status_text[512];
-
-    double j_status_height;
-
-    // Confirm
-    long j_confirm_preset_cell;
-    bool j_confirm_preset_store;
-    bool j_confirm_preset_delete;
-    bool j_confirm_preset_ok_button_down;
-    bool j_confirm_preset_cancel_button_down;
-
-    // Pagination
-    long j_preset_pagination_number;
-    bool j_pagination_left_arrow_down;
-    bool j_pagination_right_arrow_down;
-
-    // Tabs
-    t_symbol *j_selected_tab;
-
-    /** Filters **/
-
-    t_dictionary *j_filters;
-    t_hashtab *j_applied_filters;
-
-    // Filter Name
-    bool j_editing_filter_name;
-    char j_filter_name[512];
-
-    // Write Button
-    char *j_write_filter_button_text;
-    bool j_write_filter_button_down;
-
-    // Cells
-    long j_hovered_filter_cell;
-    long j_last_hovered_filter_cell;
-    long j_selected_filter_cell;
-
-    // Status
-    t_status j_filter_status;
-    t_status j_filter_status_override;
-    char j_filter_idle_status_text[512];
-    char j_filter_hover_status_text[1024];
-    char j_confirm_filter_status_text[512];
-
-    // Confirm
-    long j_confirm_filter_cell;
-    bool j_confirm_filter_delete;
-    bool j_confirm_filter_ok_button_down;
-    bool j_confirm_filter_cancel_button_down;
-
-    // Pagination
-    long j_filter_pagination_number;
-
-    // Clear
-    char j_clear_filters_status_text[512];
-    bool j_clear_filters_button_down;
-} t_presetter;
+// Local Includes
+#include "constants.h"
+#include "drawing.h"
+#include "structs.h"
 
 // -----------------------------------------------------------------------------
 // Forward Declarations
@@ -2564,7 +2302,9 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     jgraphics_text_measure(g, text, &text_width, &text_height);
 
-    if ((p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
+    bool editing = p->j_editing_preset_name || p->j_editing_filter_name;
+
+    if (editing && text_width > max_width) {
         const char *prefix = "> ";
 
         double prefix_width;
@@ -2585,22 +2325,8 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
         snprintf_zero(visible, sizeof(visible), "%s%s", prefix, content);
         jgraphics_text_measure(g, visible, &text_width, &text_height);
-    } else if (!(p->j_editing_preset_name || p->j_editing_filter_name) && text_width > max_width) {
-        snprintf_zero(visible, sizeof(visible), "%s", text);
-
-        char with_ellipsis[512];
-        snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-        jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-
-        while (text_width > max_width && strlen(visible) > 0) {
-            visible[strlen(visible) - 1] = '\0';
-            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-        }
-
-        snprintf_zero(visible, sizeof(visible), "%s...", visible);
     } else {
-        snprintf_zero(visible, sizeof(visible), "%s", text);
+        presetter_trim_text_right(g, text, bounds.width, visible, sizeof(visible));
     }
 
     // Draw editing background
@@ -2781,30 +2507,8 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
         status_text = p->j_clear_filters_status_text;
     }
 
-    double max_width = bounds.width;
-    double text_width;
-    double text_height;
     char visible[1048];
-    char with_ellipsis[1048];
-
-    jgraphics_text_measure(g, status_text, &text_width, &text_height);
-
-    if (text_width > max_width) {
-        snprintf_zero(visible, sizeof(visible), "%s", status_text);
-        snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-
-        jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-
-        while (text_width > max_width && strlen(visible) > 0) {
-            visible[strlen(visible) - 1] = '\0';
-            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-        }
-
-        snprintf_zero(visible, sizeof(visible), "%s...", visible);
-    } else {
-        snprintf_zero(visible, sizeof(visible), "%s", status_text);
-    }
+    presetter_trim_text_right(g, status_text, bounds.width, visible, sizeof(visible));
 
     t_jrgba color;
     t_jrgba color_off;
@@ -3085,30 +2789,8 @@ void presetter_draw_filter_grid_row(
 
         if (dict && dictionary_getsym(dict, gensym("name"), &name) == MAX_ERR_NONE && name) {
 
-            double max_width = cell_width - 24;
-            double text_width;
-            double text_height;
             char visible[1048];
-            char with_ellipsis[1048];
-
-            jgraphics_text_measure(g, name->s_name, &text_width, &text_height);
-
-            if (text_width > max_width) {
-                snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
-                snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-
-                jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-
-                while (text_width > max_width && strlen(visible) > 0) {
-                    visible[strlen(visible) - 1] = '\0';
-                    snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-                    jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-                }
-
-                snprintf_zero(visible, sizeof(visible), "%s...", visible);
-            } else {
-                snprintf_zero(visible, sizeof(visible), "%s", name->s_name);
-            }
+            presetter_trim_text_right(g, name->s_name, cell_width - 24, visible, sizeof(visible));
 
             long val = 0;
             hashtab_lookuplong(p->j_applied_filters, presetter_long_to_sym(cell_idx), &val);
@@ -3347,30 +3029,8 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
         status_text = p->j_clear_filters_status_text;
     }
 
-    double max_width = bounds.width;
-    double text_width;
-    double text_height;
     char visible[1048];
-    char with_ellipsis[1048];
-
-    jgraphics_text_measure(g, status_text, &text_width, &text_height);
-
-    if (text_width > max_width) {
-        snprintf_zero(visible, sizeof(visible), "%s", status_text);
-        snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-
-        jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-
-        while (text_width > max_width && strlen(visible) > 0) {
-            visible[strlen(visible) - 1] = '\0';
-            snprintf_zero(with_ellipsis, sizeof(with_ellipsis), "%s...", visible);
-            jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
-        }
-
-        snprintf_zero(visible, sizeof(visible), "%s...", visible);
-    } else {
-        snprintf_zero(visible, sizeof(visible), "%s", status_text);
-    }
+    presetter_trim_text_right(g, status_text, bounds.width, visible, sizeof(visible));
 
     t_jrgba color;
 

@@ -1,0 +1,122 @@
+#ifndef PRESETTER_CONSTANTS
+#define PRESETTER_CONSTANTS
+
+// Global
+#define PATCHER_OBJECT_COLOR_HEX "#9EBEF3"
+#define BG_COLOR_HEX "#1E1E1E"
+
+// Preset Name
+#define PRESET_NAME_EDITING_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
+#define PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX "#555555"
+#define PRESET_NAME_TEXT_EDITING_COLOR_SYM gensym("live_contrast_frame")
+#define PRESET_NAME_TEXT_DEFAULT_COLOR_SYM gensym("live_arranger_grid_tiles")
+
+// Write Button
+#define WRITE_BUTTON_INACTIVE_BG_COLOR_HEX BG_COLOR_HEX
+#define WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX "#444444"
+#define WRITE_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
+#define WRITE_BUTTON_UP_TEXT_COLOR_SYM gensym("live_arranger_grid_tiles")
+#define WRITE_BUTTON_ON_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
+#define WRITE_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+// Grid
+#define GRID_SELECTED_CELL_COLOR_SYM gensym("live_display_handle_two")
+#define GRID_HOVERED_CELL_COLOR_HEX "#999999"
+#define GRID_STORED_CELL_COLOR_HEX "#666666"
+#define GRID_DEFAULT_CELL_COLOR_HEX "#333333"
+
+// Status
+#define STATUS_TEXT_COLOR_HEX "#999999"
+#define STATUS_CONFIRM_TEXT_COLOR_SYM gensym("live_display_handle_two")
+
+// Confirm
+#define CONFIRM_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
+#define CONFIRM_BUTTON_UP_TEXT_COLOR_SYM gensym("live_display_handle_two")
+#define CONFIRM_BUTTON_ON_BG_COLOR_SYM gensym("live_display_handle_two")
+#define CONFIRM_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+// Pagination
+#define PAGINATION_ARROW_OFF_COLOR_HEX "#444444"
+#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
+#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+
+// Tabs
+#define TAB_PRESETS_UP_BG_COLOR_HEX "#181818"
+#define TAB_PRESETS_UP_TEXT_COLOR_HEX "#555555"
+#define TAB_PRESETS_ON_BG_COLOR_SYM gensym("live_display_handle_two")
+#define TAB_PRESETS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+#define TAB_FILTERS_UP_BG_COLOR_HEX "#181818"
+#define TAB_FILTERS_UP_TEXT_COLOR_HEX "#555555"
+#define TAB_FILTERS_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
+#define TAB_FILTERS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
+
+#define TAB_BAR_COLOR_HEX "#181818"
+
+/* Dimensions & Text */
+
+// Grid
+#define GRID_OFFSET_X 5
+#define GRID_OFFSET_Y 3
+#define CELL_SIZE 8.0
+#define CELL_PADDING 3.5
+#define CELL_TOTAL_SIZE (CELL_SIZE + CELL_PADDING)
+
+// Write Name
+#define WRITE_NAME_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
+#define WRITE_NAME_OFFSET_Y 9
+#define WRITE_NAME_MARGIN_RIGHT 4
+#define WRITE_NAME_FONT_SIZE 10
+
+// Buttons
+#define BUTTON_FONT_SIZE 9
+#define BUTTON_PADDING_X 4
+#define BUTTON_PADDING_Y 2
+
+// Write Button
+#define WRITE_BUTTON_TEXT "WRITE NAME"
+#define WRITE_FILTER_BUTTON_TEXT "WRITE FILTER"
+#define WRITE_BUTTON_OFFSET_X (GRID_OFFSET_X + CELL_PADDING)
+#define WRITE_BUTTON_OFFSET_Y 8
+
+// Status
+#define STATUS_FONT_SIZE 10
+#define STATUS_OFFSET_X 8
+#define STATUS_OFFSET_Y 4
+#define STATUS_PADDING_RIGHT 2
+
+// Confirm
+#define CONFIRM_OK_BUTTON_TEXT "OK"
+#define CONFIRM_OK_BUTTON_MARGIN_LEFT 12
+#define CONFIRM_CANCEL_BUTTON_TEXT "CANCEL"
+#define CONFIRM_CANCEL_BUTTON_MARGIN_LEFT 8
+#define CONFIRM_BUTTON_OFFSET_Y 5
+
+// Pagination
+#define PAGINATION_MARGIN_TOP 0
+#define PAGINATION_MARGIN_RIGHT 9
+#define PAGINATION_NUMBER_FONT "Arial"
+#define PAGINATION_NUMBER_FONT_SIZE 10
+#define PAGINATION_LEFT_ARROW_TEXT "‹"
+#define PAGINATION_RIGHT_ARROW_TEXT "›"
+#define PAGINATION_ARROW_FONT "Menlo"
+#define PAGINATION_ARROW_FONT_SIZE 13
+#define PAGINATION_ARROW_PADDING 2
+
+// Tabs
+#define TAB_MARGIN 5
+#define TAB_FONT_SIZE 9
+#define TAB_PADDING_X 5
+#define TAB_PADDING_Y 2.5
+#define TAB_PRESETS_TEXT "PRESETS"
+#define TAB_FILTERS_TEXT "FILTERS"
+
+/** Filters **/
+
+#define FILTER_CELL_MIN_WIDTH 120
+#define FILTER_CELL_HEIGHT 20
+#define FILTER_GRID_PADDING 5
+
+#define CLEAR_FILTERS_BUTTON_TEXT "CLEAR"
+
+#endif // !PRESETTER_CONSTANTS
