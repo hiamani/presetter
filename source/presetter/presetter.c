@@ -29,7 +29,7 @@ void ext_main(void *r) {
     // Methods
 
     class_addmethod(c, (method)presetter_bang, "bang", 0);
-    class_addmethod(c, (method)presetter_loadbang, "loadbang", 0);
+    class_addmethod(c, (method)presetter_loadbang, "loadbang", A_CANT, 0);
     class_addmethod(c, (method)presetter_assist, "assist", A_CANT, 0);
     class_addmethod(c, (method)presetter_notify, "notify", A_CANT, 0);
 
