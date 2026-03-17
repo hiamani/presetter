@@ -1,6 +1,5 @@
 #include "ext.h"
 
-#include "constants.h"
 #include "handlers.h"
 #include "structs.h"
 
@@ -72,17 +71,6 @@ void ext_main(void *r) {
 
 /// Lifecycle methods
 
-// Element Measurements (Avoid Circular Bounds References)
-
-void presetter_init_status_dim(t_presetter *p) {
-    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(p->offscreen, &extents);
-    p->j_status_height = extents.height;
-}
-
 // Filepath
 
 short presetter_get_patcher_path(t_presetter *p) {
@@ -146,7 +134,6 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         // Status
         p->j_preset_status = PRESETTER_NO_STATUS;
         p->j_preset_status_override = PRESETTER_NO_STATUS;
-        presetter_init_status_dim(p);
 
         // Preset Confirm
         p->j_confirm_preset_cell = -1;

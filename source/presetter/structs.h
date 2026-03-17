@@ -86,8 +86,6 @@ typedef struct _presetter {
     char j_preset_hover_status_text[1024];
     char j_confirm_preset_status_text[512];
 
-    double j_status_height;
-
     // Confirm
     long j_confirm_preset_cell;
     bool j_confirm_preset_store;

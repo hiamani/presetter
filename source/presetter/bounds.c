@@ -125,6 +125,17 @@ bool presetter_in_name_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
+// Measure Status Height
+
+double presetter_get_status_height(t_presetter *p) {
+    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(p->offscreen, &extents);
+    return extents.height;
+}
+
 /* Grid Bounds */
 
 t_grid_dim presetter_get_preset_grid_dim(t_presetter *p, t_rect *rect) {
@@ -134,8 +145,9 @@ t_grid_dim presetter_get_preset_grid_dim(t_presetter *p, t_rect *rect) {
     t_grid_dim dim;
     dim.columns = (int)floor((rect->width - CELL_PADDING - GRID_OFFSET_X) / CELL_TOTAL_SIZE);
 
+    double status_height = presetter_get_status_height(p);
     double grid_y_pos = WRITE_NAME_OFFSET_Y + pnbounds.height + GRID_OFFSET_Y + ptbounds.height + TAB_MARGIN;
-    double grid_space = rect->height - grid_y_pos - p->j_status_height - STATUS_OFFSET_Y - CELL_PADDING;
+    double grid_space = rect->height - grid_y_pos - status_height - STATUS_OFFSET_Y - CELL_PADDING;
     dim.rows = (int)floor(grid_space / CELL_TOTAL_SIZE);
     if (dim.rows < 0)
         dim.rows = 0;
@@ -283,7 +295,7 @@ t_bounds presetter_get_preset_status_bounds(t_presetter *p, t_rect *rect) {
     bounds.x = STATUS_OFFSET_X;
     bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
     bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
-    bounds.height = p->j_status_height;
+    bounds.height = presetter_get_status_height(p);
     return bounds;
 }
 
@@ -428,7 +440,7 @@ t_bounds presetter_get_filter_status_bounds(t_presetter *p, t_rect *rect) {
     bounds.x = STATUS_OFFSET_X;
     bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
     bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
-    bounds.height = p->j_status_height;
+    bounds.height = presetter_get_status_height(p);
     return bounds;
 }
 
