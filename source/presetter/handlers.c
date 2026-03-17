@@ -26,7 +26,11 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
         if (ps) {
             p->j_pattrstorage = ps;
             object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+        } else {
+            return MAX_ERR_GENERIC;
         }
+    } else {
+        return MAX_ERR_GENERIC;
     }
 
     return MAX_ERR_NONE;
