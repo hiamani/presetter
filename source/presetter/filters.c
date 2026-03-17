@@ -96,9 +96,7 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index) {
         }
 
     } else {
-        char keystr[24];
-        snprintf_zero(keystr, sizeof(keystr), "%ld", index);
-        key = gensym(keystr);
+        key = presetter_long_to_sym(index);
     }
 
     t_dictionary *obj = NULL;
