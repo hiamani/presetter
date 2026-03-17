@@ -35,6 +35,34 @@ void presetter_trim_text_right(t_jgraphics *g, const char *text, double max_widt
     }
 }
 
+// Button Drawing
+
+void presetter_draw_button(
+    t_jgraphics *g, t_bounds *bounds, const char *text, bool button_down, t_jrgba *bg_color, t_jrgba *text_color
+) {
+    jgraphics_rectangle(g, bounds->x, bounds->y, bounds->width, bounds->height);
+
+    if (!button_down) {
+        jgraphics_set_source_jrgba(g, text_color);
+        jgraphics_stroke_preserve(g);
+    }
+
+    jgraphics_set_source_jrgba(g, bg_color);
+    jgraphics_fill(g);
+
+    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
+    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
+    jgraphics_set_source_jrgba(g, text_color);
+
+    t_jgraphics_font_extents extents;
+    jgraphics_font_extents(g, &extents);
+
+    double text_y = bounds->y + (bounds->height + extents.ascent - extents.descent) / 2;
+    jgraphics_move_to(g, bounds->x + BUTTON_PADDING_X, text_y);
+    jgraphics_text_path(g, text);
+    jgraphics_fill(g);
+}
+
 /* Write Name */
 
 void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -161,27 +189,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_write_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, WRITE_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(g, &bounds, WRITE_BUTTON_TEXT, p->j_write_button_down, &bg_color, &text_color);
 }
 
 /* Grid */
@@ -311,27 +319,9 @@ void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_r
         presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_confirm_preset_ok_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, CONFIRM_OK_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(
+        g, &bounds, CONFIRM_OK_BUTTON_TEXT, p->j_confirm_preset_ok_button_down, &bg_color, &text_color
+    );
 }
 
 void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -354,27 +344,9 @@ void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g,
         presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_confirm_preset_cancel_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, CONFIRM_CANCEL_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(
+        g, &bounds, CONFIRM_CANCEL_BUTTON_TEXT, p->j_confirm_preset_cancel_button_down, &bg_color, &text_color
+    );
 }
 
 void presetter_draw_right_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -630,27 +602,7 @@ void presetter_draw_write_filter_button(t_presetter *p, t_jgraphics *g, t_rect *
         presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_write_filter_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, WRITE_FILTER_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(g, &bounds, WRITE_FILTER_BUTTON_TEXT, p->j_write_filter_button_down, &bg_color, &text_color);
 }
 
 void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -695,27 +647,9 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
         presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_confirm_filter_ok_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, CONFIRM_OK_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(
+        g, &bounds, CONFIRM_OK_BUTTON_TEXT, p->j_confirm_filter_ok_button_down, &bg_color, &text_color
+    );
 }
 
 void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -738,27 +672,9 @@ void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g,
         presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_confirm_filter_cancel_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, CONFIRM_CANCEL_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(
+        g, &bounds, CONFIRM_CANCEL_BUTTON_TEXT, p->j_confirm_filter_cancel_button_down, &bg_color, &text_color
+    );
 }
 
 void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) {
@@ -821,25 +737,7 @@ void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect 
         }
     }
 
-    jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
-
-    if (!p->j_clear_filters_button_down) {
-        jgraphics_set_source_jrgba(g, &text_color);
-        jgraphics_stroke_preserve(g);
-    }
-
-    jgraphics_set_source_jrgba(g, &bg_color);
-    jgraphics_fill(g);
-
-    jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(g, BUTTON_FONT_SIZE);
-    jgraphics_set_source_jrgba(g, &text_color);
-
-    t_jgraphics_font_extents extents;
-    jgraphics_font_extents(g, &extents);
-
-    double text_y = bounds.y + (bounds.height + extents.ascent - extents.descent) / 2;
-    jgraphics_move_to(g, bounds.x + BUTTON_PADDING_X, text_y);
-    jgraphics_text_path(g, CLEAR_FILTERS_BUTTON_TEXT);
-    jgraphics_fill(g);
+    presetter_draw_button(
+        g, &bounds, CLEAR_FILTERS_BUTTON_TEXT, p->j_clear_filters_button_down, &bg_color, &text_color
+    );
 }
