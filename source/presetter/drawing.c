@@ -1,3 +1,4 @@
+#include "ext_hashtab.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
 #include "jgraphics.h"
@@ -10,7 +11,9 @@
 #include "structs.h"
 #include "utilities.h"
 
-void presetter_trim_text_right(t_jgraphics *g, const char *text, double max_width, char *out, long outsize) {
+/* Utilities */
+
+static void presetter_trim_text_right(t_jgraphics *g, const char *text, double max_width, char *out, long outsize) {
     double text_width;
     double text_height;
 
@@ -35,7 +38,7 @@ void presetter_trim_text_right(t_jgraphics *g, const char *text, double max_widt
     }
 }
 
-// Button Drawing
+/* Button Drawing */
 
 void presetter_draw_button(
     t_jgraphics *g, t_bounds *bounds, const char *text, bool button_down, t_jrgba *bg_color, t_jrgba *text_color
@@ -201,6 +204,8 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
 
         t_jrgba color;
         t_symbol *name = presetter_lookup_preset_slot(p, cell_idx);
+
+        long applied_filters = hashtab_getsize(p->j_applied_filters);
         bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
 
         if (p->j_selected_preset_cell == cell_idx) {
@@ -208,7 +213,7 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         } else if (p->j_hovered_preset_cell == cell_idx) {
             presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color);
         } else if (filtered_cell) {
-            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color);
         } else if (name) {
             presetter_resolve_color(GRID_STORED_CELL_COLOR, &color);
         } else {
@@ -218,7 +223,9 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
         jgraphics_set_source_jrgba(g, &color);
 
-        if (filtered_cell && p->j_selected_preset_cell != cell_idx) {
+        if (applied_filters > 0 && name && !filtered_cell && p->j_selected_preset_cell != cell_idx) {
+            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color);
+            jgraphics_set_source_jrgba(g, &color);
             jgraphics_stroke(g);
         } else {
             jgraphics_fill(g);
