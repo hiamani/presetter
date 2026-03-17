@@ -4,29 +4,206 @@
   <digest>
     Enhanced preset UI
   </digest>
+
   <description>
-    Access and rename your pattrstorage presets
+    Access, rename, and filter your pattrstorage presets
   </description>
 
-  <!--INLETS-->
   <inletlist>
     <inlet id="0" type="message">
       <digest>Messages from pattrstorage dumpout</digest>
     </inlet>
   </inletlist>
 
-  <!--OUTLETS-->
   <outletlist>
     <outlet id="0" type="bang">
       <digest>Operation (store/rename/delete) complete</digest>
     </outlet>
   </outletlist>
 
+  <methodlist>
+    <method name="bang">
+      <arglist>
+      </arglist>
+      <digest>
+        Re-read slotnames from pattrstorage
+      </digest>
+      <description>
+        Send pattrstorage a "getslotnamelist" message for presetter to read and
+        update its presets table
+      </description>
+    </method>
+
+    <method name="addfilter">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Add a new filter
+      </digest>
+      <description>
+        The word <i>addfilter</i> followed by a symbol will add a new filter to
+        presetter. The first available filter slot will be used.
+      </description>
+    </method>
+
+    <method name="renamefilter">
+      <arglist>
+        <arg name="old-filter-name" optional="0" type="symbol" />
+        <arg name="new-filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Rename a filter
+      </digest>
+      <description>
+        The word <i>renamefilter</i> followed by two symbols will change the
+        name of a filter.
+      </description>
+    </method>
+
+    <method name="removefilter">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Remove a filter
+      </digest>
+      <description>
+        The word <i>remove</i> followed by a symbol will remove a filter from
+        presetter.
+      </description>
+    </method>
+
+    <method name="addfilterslot">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+        <arg name="slot-number" optional="0" type="int" />
+      </arglist>
+      <digest>
+        Add a preset slot to a filter
+      </digest>
+      <description>
+        The word <i>addfilterslot</i> followed by a symbol and a number will add
+        a preset to the filter.
+      </description>
+    </method>
+
+    <method name="removefilterslot">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+        <arg name="slot-number" optional="0" type="int" />
+      </arglist>
+      <digest>
+        Remove a preset slot from a filter
+      </digest>
+      <description>
+        The word <i>removefilterslot</i> followed by a symbol and a number will
+        remove the a preset from the filter.
+      </description>
+    </method>
+
+    <method name="clearfilter">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Clear a filter of all its presets
+      </digest>
+      <description>
+        The word <i>clearfilter</i> followed by a symbol will clear all preset
+        slots from a filter.
+      </description>
+    </method>
+
+    <method name="applyfilter">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Apply a filter to the preset list
+      </digest>
+      <description>
+        The word <i>applyfliter</i> followed by a symbol will filter out the
+        list of presets to only include those added to the filter.
+      </description>
+    </method>
+
+    <method name="resetfilter">
+      <arglist>
+        <arg name="filter-name" optional="0" type="symbol" />
+      </arglist>
+      <digest>
+        Reset an applied filter
+      </digest>
+      <description>
+        The word <i>resetfilter</i> followed by a symbol will reset an applied
+        filter from filtering out the preset list.
+      </description>
+    </method>
+
+    <method name="resetfilters">
+      <arglist>
+      </arglist>
+      <digest>
+        Reset all applied filters
+      </digest>
+      <description>
+        The word <i>resetfilters</i> resets all applied filters.
+      </description>
+    </method>
+
+    <method name="readfilters">
+      <arglist>
+      </arglist>
+      <digest>
+        Read filters from a file
+      </digest>
+      <description>
+        The word <i>readfilters</i> reads the filter file specified by the
+        <i>filename</i> attribute.
+      </description>
+    </method>
+
+    <method name="writefilters">
+      <arglist>
+      </arglist>
+      <digest>
+        Write filters to a file
+      </digest>
+      <description>
+        The word <i>writefilters</i> writes filters to the file specified by the
+        <i>filename</i> attribute.
+      </description>
+    </method>
+  </methodlist>
+
   <!--ATTRIBUTES-->
   <attributelist>
     <attribute name="pattrstorage" get="1" set="1" type="symbol" size="1" >
       <digest>Which pattrstorage object to bind to</digest>
-      <description>Use the varname of your pattrstorage object to bind presetter</description>
+      <description>
+        Use the varname of your pattrstorage object to allow presetter to
+        communicate with it.
+      </description>
+    </attribute>
+
+    <attribute name="filename" get="1" set="1" type="symbol" size="1" >
+      <digest>Filename to read and write filters</digest>
+      <description>
+        Specify a filename to read and write filters, which will be used in the
+        <i>readfilters</i> and <i>writefilters</i> messages. If the
+        <i>autofilter</i> attribute is set, all filter operations write to this
+        filename after they're completed.
+      </description>
+    </attribute>
+
+    <attribute name="autowrite" get="1" set="1" type="symbol" size="1" >
+      <digest>Automatically write the filters file</digest>
+      <description>
+        When autowrite is set to true, all filter operations- adding, renaming,
+        or removing filters, as well as adding or removing slots from filters-
+        write to the file specified in the <i>filename</i> attribute.
+      </description>
     </attribute>
   </attributelist>
 </c74object>
