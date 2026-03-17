@@ -39,18 +39,18 @@ void ext_main(void *r) {
 
     class_addmethod(c, (method)presetter_addfilter, "addfilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_renamefilter, "renamefilter", A_GIMME, 0);
-    class_addmethod(c, (method)presetter_clearfilter, "clearfilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilter, "removefilter", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_addfilterslot, "addfilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilterslot, "removefilterslot", A_GIMME, 0);
-    class_addmethod(c, (method)presetter_resetfilters, "resetfilters", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_clearfilter, "clearfilter", A_GIMME, 0);
+
     class_addmethod(c, (method)presetter_applyfilter, "applyfilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_resetfilter, "resetfilter", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_resetfilters, "resetfilters", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_readfilters, "readfilters", A_GIMME, 0);
     class_addmethod(c, (method)presetter_writefilters, "writefilters", A_GIMME, 0);
-    class_addmethod(c, (method)presetter_savefilters, "savefilters", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 

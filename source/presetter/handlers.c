@@ -284,23 +284,6 @@ void presetter_writefilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv
     presetter_write_filters_dictionary(p);
 }
 
-void presetter_savefilters(t_presetter *p, t_symbol *s) {
-    char filename[MAX_PATH_CHARS];
-    short path;
-    t_fourcc type = 'JSON';
-
-    if (s == gensym("")) {
-        if (saveasdialog_extended(filename, &path, &type, &type, 1)) {
-            return;
-        }
-    } else {
-        strncpy_zero(filename, s->s_name, MAX_PATH_CHARS);
-        path = p->j_patcher_path;
-    }
-
-    dictionary_write(p->j_filters, filename, path);
-}
-
 // Pass through unknown messages silently
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     // post("%s", s->s_name);
