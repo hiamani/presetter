@@ -45,6 +45,14 @@ void presetter_resetfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv)
 
 void presetter_resetfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
+void presetter_readfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
+void presetter_writefilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
+void presetter_savefilters(t_presetter *p, t_symbol *s);
+
+/// Catchall
+
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 /// Callback Methods

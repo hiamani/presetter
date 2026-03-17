@@ -45,9 +45,12 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_addfilterslot, "addfilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_removefilterslot, "removefilterslot", A_GIMME, 0);
     class_addmethod(c, (method)presetter_resetfilters, "resetfilters", A_GIMME, 0);
-
     class_addmethod(c, (method)presetter_applyfilter, "applyfilter", A_GIMME, 0);
     class_addmethod(c, (method)presetter_resetfilter, "resetfilter", A_GIMME, 0);
+
+    class_addmethod(c, (method)presetter_readfilters, "readfilters", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_writefilters, "writefilters", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_savefilters, "savefilters", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
@@ -63,11 +66,16 @@ void ext_main(void *r) {
     // Attributes
     CLASS_ATTR_SYM(c, "pattrstorage", 0, t_presetter, j_pattrstorage_name);
     CLASS_ATTR_ACCESSORS(c, "pattrstorage", NULL, presetter_set_pattrstorage);
-    CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
+    CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage Object Name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
+    CLASS_ATTR_CHAR(c, "autowrite", 0, t_presetter, j_filters_autowrite);
+    CLASS_ATTR_LABEL(c, "autowrite", 0, "Autowrite Filters JSON");
+    CLASS_ATTR_STYLE(c, "autowrite", 0, "onoff");
+    CLASS_ATTR_SAVE(c, "autowrite", 0);
+
     CLASS_ATTR_SYM(c, "filename", 0, t_presetter, j_filters_filename);
-    CLASS_ATTR_LABEL(c, "filename", 0, "filters filename");
+    CLASS_ATTR_LABEL(c, "filename", 0, "Filename");
     CLASS_ATTR_SAVE(c, "filename", 0);
 
     // Patching Rect

@@ -17,4 +17,6 @@ void presetter_read_filters_dictionary(t_presetter *p);
 
 void presetter_write_filters_dictionary(t_presetter *p);
 
+void presetter_autowrite_filters_dictionary(t_presetter *p);
+
 #endif

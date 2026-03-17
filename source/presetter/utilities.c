@@ -94,6 +94,8 @@ void presetter_read_filters_dictionary(t_presetter *p) {
     if (!presetter_resolve_filter_path(p, p->j_filters_filename->s_name, &path_id, fname))
         return;
 
+    p->j_filters = dictionary_new();
+
     if (dictionary_read(fname, path_id, &p->j_filters) != MAX_ERR_NONE) {
         p->j_filters = dictionary_new();
     }
@@ -110,4 +112,11 @@ void presetter_write_filters_dictionary(t_presetter *p) {
         return;
 
     dictionary_write(p->j_filters, fname, path_id);
+}
+
+void presetter_autowrite_filters_dictionary(t_presetter *p) {
+    if (!p->j_filters_autowrite)
+        return;
+
+    presetter_write_filters_dictionary(p);
 }
