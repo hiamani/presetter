@@ -171,7 +171,7 @@ void presetter_addfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         return;
 
     if (presetter_add_filter_sym(p, atom_getsym(argv), 0)) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -185,7 +185,7 @@ void presetter_renamefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
         return;
 
     if (presetter_rename_filter_sym(p, atom_getsym(argv), atom_getsym(argv + 1))) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -199,7 +199,7 @@ void presetter_clearfilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv)
         return;
 
     if (presetter_clear_filter_sym(p, atom_getsym(argv))) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         return;
     }
 }
@@ -212,7 +212,7 @@ void presetter_removefilter(t_presetter *p, t_symbol *s, long argc, t_atom *argv
         return;
 
     if (presetter_remove_filter_sym(p, atom_getsym(argv))) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         defer_low((t_object *)p, (method)presetter_filters_clear_deferred, NULL, 0, NULL);
         return;
     }
@@ -226,7 +226,7 @@ void presetter_addfilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *arg
         return;
 
     if (presetter_set_filter_slot_sym(p, atom_getsym(argv), atom_getlong(argv + 1))) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         defer_low((t_object *)p, (method)presetter_redraw_deferred, NULL, 0, NULL);
         return;
     }
@@ -240,7 +240,7 @@ void presetter_removefilterslot(t_presetter *p, t_symbol *s, long argc, t_atom *
         return;
 
     if (presetter_drop_filter_slot_sym(p, atom_getsym(argv), atom_getlong(argv + 1))) {
-        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+        presetter_write_filters_dictionary(p);
         defer_low((t_object *)p, (method)presetter_redraw_deferred, NULL, 0, NULL);
         return;
     }
@@ -553,7 +553,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                     }
 
                     if (filter_set) {
-                        dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+                        presetter_write_filters_dictionary(p);
                     }
 
                     sysmem_freeptr(kvs);
@@ -758,7 +758,7 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
         if (p->j_confirm_filter_delete) {
             presetter_remove_filter_idx(p, p->j_confirm_filter_cell);
             p->j_filter_name[0] = '\0';
-            dictionary_write(p->j_filters, "filters.json", p->j_patcher_path);
+            presetter_write_filters_dictionary(p);
         }
         presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);

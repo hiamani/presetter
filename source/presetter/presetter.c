@@ -1,7 +1,10 @@
 #include "ext.h"
 
+#include "ext_obex_util.h"
+#include "ext_proto.h"
 #include "handlers.h"
 #include "structs.h"
+#include "utilities.h"
 
 /// Lifecycle Declarations
 
@@ -63,33 +66,15 @@ void ext_main(void *r) {
     CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage object name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
+    CLASS_ATTR_SYM(c, "filename", 0, t_presetter, j_filters_filename);
+    CLASS_ATTR_LABEL(c, "filename", 0, "filters filename");
+    CLASS_ATTR_SAVE(c, "filename", 0);
+
+    // Patching Rect
     CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 289. 170.");
 
     class_register(CLASS_BOX, c);
     s_presetter_class = c;
-}
-
-/// Lifecycle methods
-
-// Filepath
-
-short presetter_get_patcher_path(t_presetter *p) {
-    t_object *patcher = NULL;
-    object_obex_lookup(p, gensym("#P"), &patcher);
-
-    if (!patcher)
-        return 0;
-
-    t_symbol *patcher_fpath = object_attr_getsym(patcher, gensym("filepath"));
-
-    if (!patcher_fpath || patcher_fpath == gensym(""))
-        return 0;
-
-    short patch_pathid;
-    char patcher_fname[MAX_PATH_CHARS];
-    path_frompathname(patcher_fpath->s_name, &patch_pathid, patcher_fname);
-
-    return patch_pathid;
 }
 
 t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
@@ -175,18 +160,13 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         // Pagination
         p->j_filter_pagination_number = 1;
 
-        if (dictionary_read("filters.json", p->j_patcher_path, &p->j_filters) != MAX_ERR_NONE) {
-            // dictionary_read vaporizes the passed in dictionary if the file
-            // doesn't exist. that is not good.
-            p->j_filters = dictionary_new();
-        }
+        presetter_read_filters_dictionary(p);
 
         // Clear
         p->j_clear_filters_button_down = false;
 
         jbox_ready(&p->j_box);
     }
-
     return p;
 }
 
