@@ -25,12 +25,13 @@ t_dictionary *presetter_lookup_filter_slot(t_presetter *p, long index) {
 }
 
 bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result) {
-    t_dictionary *fs = p->j_filters;
+    t_dictionary *dict = p->j_filters;
 
     long numkeys = 0;
     t_symbol **keys = NULL;
 
-    if (dictionary_getkeys(fs, &numkeys, &keys) != MAX_ERR_NONE) {
+    if (dictionary_getkeys(dict, &numkeys, &keys) != MAX_ERR_NONE) {
+        dictionary_freekeys(dict, numkeys, keys);
         return false;
     }
 
@@ -38,7 +39,7 @@ bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result 
         t_symbol *key = keys[i];
 
         t_dictionary *obj = NULL;
-        dictionary_getdictionary(fs, key, (t_object **)&obj);
+        dictionary_getdictionary(dict, key, (t_object **)&obj);
 
         if (!obj) {
             continue;
@@ -55,12 +56,12 @@ bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result 
             result->dict = obj;
             result->index = key;
 
-            dictionary_freekeys(fs, numkeys, keys);
+            dictionary_freekeys(dict, numkeys, keys);
             return true;
         }
     }
 
-    dictionary_freekeys(fs, numkeys, keys);
+    dictionary_freekeys(dict, numkeys, keys);
     return false;
 }
 
