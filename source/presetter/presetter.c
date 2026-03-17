@@ -174,7 +174,10 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_clear_filters_button_down = false;
 
         jbox_ready(&p->j_box);
+
+        presetter_connect_pattrstorage(p);
     }
+
     return p;
 }
 

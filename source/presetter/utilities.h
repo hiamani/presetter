@@ -11,6 +11,8 @@ short presetter_get_patcher_path(t_presetter *p);
 
 t_object *presetter_find_pattrstorage(t_presetter *p);
 
+void presetter_connect_pattrstorage(t_presetter *p);
+
 bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *out_path, char *out_name);
 
 void presetter_read_filters_dictionary(t_presetter *p);

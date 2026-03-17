@@ -1,5 +1,6 @@
 #include "ext_obex.h"
 #include "ext_path.h"
+#include "ext_post.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
 
@@ -18,7 +19,7 @@ void presetter_redraw_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *a
     jbox_redraw((t_jbox *)p);
 }
 
-/* Find pattrstorage */
+/* pattrstorage Utilities */
 
 t_object *presetter_find_pattrstorage(t_presetter *p) {
     if (p->j_pattrstorage) {
@@ -45,6 +46,56 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
 
     return NULL;
 }
+
+void presetter_connect_pattrstorage_(t_presetter *p) {
+    t_object *patcher = NULL;
+    object_obex_lookup(p, gensym("#P"), &patcher);
+
+    if (!patcher)
+        return;
+
+    t_object *ps = presetter_find_pattrstorage(p);
+
+    if (!ps) {
+        if (p->j_pattrstorage_name && p->j_pattrstorage_name != gensym("")) {
+            object_error((t_object *)p, "Couldn't connect to pattrstorage %s", p->j_pattrstorage_name->s_name);
+        } else {
+            object_error((t_object *)p, "pattrstorage attribute not set");
+        }
+        return;
+    }
+
+    t_object *ps_box = NULL;
+    object_obex_lookup(ps, gensym("#B"), &ps_box);
+
+    if (!ps_box)
+        return;
+
+    t_object *my_box = NULL;
+    object_obex_lookup(p, gensym("#B"), &my_box);
+
+    if (!my_box)
+        return;
+
+    t_atom msg[4], rv;
+    atom_setobj(msg, ps_box);
+    atom_setlong(msg + 1, 0);
+    atom_setobj(msg + 2, my_box);
+    atom_setlong(msg + 3, 0);
+    object_method_typed(patcher, gensym("connect"), 4, msg, &rv);
+
+    object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
+}
+
+void presetter_connect_pattrstorage_deferred(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
+    presetter_connect_pattrstorage_(p);
+}
+
+void presetter_connect_pattrstorage(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
+    defer_low((t_object *)p, (method)presetter_connect_pattrstorage_deferred, NULL, 0, NULL);
+}
+
+/* Path Utilities */
 
 short presetter_get_patcher_path(t_presetter *p) {
     t_object *patcher = NULL;
@@ -83,6 +134,8 @@ bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *
 
     return true;
 }
+
+/* Read / Write Filters */
 
 void presetter_read_filters_dictionary(t_presetter *p) {
     if (p->j_filters_filename == NULL || p->j_filters_filename == gensym(""))
