@@ -1,7 +1,5 @@
 #include "ext_proto.h"
 #include "ext_strings.h"
-#include "jgraphics.h"
-#include "jpatcher_api.h"
 
 #include "constants.h"
 #include "structs.h"

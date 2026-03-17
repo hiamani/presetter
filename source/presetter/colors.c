@@ -1,7 +1,6 @@
 #include "colors.h"
 #include "ext_proto.h"
 #include "jgraphics.h"
-#include "jpatcher_api.h"
 
 void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha) {
     unsigned int r, g, b;

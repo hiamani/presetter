@@ -8,6 +8,7 @@
 #include "filters.h"
 #include "presets.h"
 #include "structs.h"
+#include "utilities.h"
 
 void presetter_trim_text_right(t_jgraphics *g, const char *text, double max_width, char *out, long outsize) {
     double text_width;

@@ -1,7 +1,9 @@
+#ifndef PRESETTER_FILTERS
+#define PRESETTER_FILTERS
+
 #include "ext_dictionary.h"
 
 #include "structs.h"
-#include "utilities.h"
 
 void presetter_filters_clear_deferred(t_presetter *p, t_symbol *s, short arc, t_atom *argv);
 
@@ -50,3 +52,5 @@ void presetter_reset_filter_all(t_presetter *p);
 bool presetter_filtered_cell(t_presetter *p, long cell_idx);
 
 void presetter_handle_filter_rename(t_presetter *p);
+
+#endif

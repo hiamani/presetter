@@ -1,3 +1,6 @@
+#ifndef PRESETTER_BOUNDS
+#define PRESETTER_BOUNDS
+
 #include "structs.h"
 
 // -----------------------------------------------------------------------------
@@ -121,3 +124,5 @@ bool presetter_in_confirm_filter_cancel_button_bounds(t_presetter *p, t_rect *re
 t_bounds presetter_get_clear_filters_button_bounds(t_presetter *p, t_rect *rect);
 
 bool presetter_in_clear_filters_button_bounds(t_presetter *p, t_rect *rect, t_pt *pt);
+
+#endif

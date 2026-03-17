@@ -1,3 +1,6 @@
+#ifndef PRESETTER_HANDLERS
+#define PRESETTER_HANDLERS
+
 #include "structs.h"
 
 /// Attribute Methods
@@ -73,3 +76,5 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
 /// Paint
 
 void presetter_paint(t_presetter *p, t_object *patcherview);
+
+#endif
