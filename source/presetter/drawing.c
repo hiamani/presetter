@@ -7,6 +7,7 @@
 #include "colors.h"
 #include "constants.h"
 #include "filters.h"
+#include "jpatcher_api.h"
 #include "presets.h"
 #include "structs.h"
 #include "utilities.h"
@@ -63,6 +64,17 @@ void presetter_draw_button(
     double text_y = bounds->y + (bounds->height + extents.ascent - extents.descent) / 2;
     jgraphics_move_to(g, bounds->x + BUTTON_PADDING_X, text_y);
     jgraphics_text_path(g, text);
+    jgraphics_fill(g);
+}
+
+/* Background */
+
+void presetter_draw_background(t_presetter *p, t_jgraphics *g, t_rect *rect) {
+    t_jrgba color;
+    presetter_resolve_color(BG_COLOR, &color);
+
+    jgraphics_rectangle_rounded(g, 0, 0, rect->width, rect->height, 4, 4);
+    jgraphics_set_source_jrgba(g, &color);
     jgraphics_fill(g);
 }
 

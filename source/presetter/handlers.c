@@ -6,7 +6,6 @@
 
 // Local Includes
 #include "bounds.h"
-#include "colors.h"
 #include "drawing.h"
 #include "filters.h"
 #include "presets.h"
@@ -946,12 +945,7 @@ void presetter_paint(t_presetter *p, t_object *patcherview) {
     t_rect rect;
     jbox_get_rect_for_view((t_object *)p, patcherview, &rect);
 
-    t_jrgba color;
-    presetter_resolve_color(BG_COLOR, &color);
-
-    jgraphics_rectangle_rounded(g, 0, 0, rect.width, rect.height, 4, 4);
-    jgraphics_set_source_jrgba(g, &color);
-    jgraphics_fill(g);
+    presetter_draw_background(p, g, &rect);
 
     presetter_draw_write_name(p, g, &rect);
 

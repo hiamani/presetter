@@ -5,6 +5,8 @@
 
 #include "structs.h"
 
+void presetter_draw_background(t_presetter *p, t_jgraphics *g, t_rect *rect);
+
 void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect);
 
 void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect);
