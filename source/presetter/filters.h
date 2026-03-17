@@ -11,8 +11,6 @@ t_dictionary *presetter_lookup_filter_slot(t_presetter *p, long index);
 
 bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result *result);
 
-t_symbol *presetter_find_free_filter_slot(t_dictionary *d);
-
 /* Add / Remove Filters */
 
 bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index);

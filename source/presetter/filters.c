@@ -64,7 +64,7 @@ bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result 
     return false;
 }
 
-t_symbol *presetter_find_free_filter_slot(t_dictionary *d) {
+static t_symbol *presetter_find_free_filter_slot(t_dictionary *d) {
     char keystr[24];
 
     for (long i = 0; i < dictionary_getentrycount(d) + 1; i++) {
