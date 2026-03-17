@@ -1,58 +1,6 @@
 #ifndef PRESETTER_CONSTANTS
 #define PRESETTER_CONSTANTS
 
-// Global
-#define PATCHER_OBJECT_COLOR_HEX "#9EBEF3"
-#define BG_COLOR_HEX "#1E1E1E"
-
-// Preset Name
-#define PRESET_NAME_EDITING_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define PRESET_NAME_TEXT_UNSELECTED_COLOR_HEX "#555555"
-#define PRESET_NAME_TEXT_EDITING_COLOR_SYM gensym("live_contrast_frame")
-#define PRESET_NAME_TEXT_DEFAULT_COLOR_SYM gensym("live_arranger_grid_tiles")
-
-// Write Button
-#define WRITE_BUTTON_INACTIVE_BG_COLOR_HEX BG_COLOR_HEX
-#define WRITE_BUTTON_INACTIVE_TEXT_COLOR_HEX "#444444"
-#define WRITE_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
-#define WRITE_BUTTON_UP_TEXT_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define WRITE_BUTTON_ON_BG_COLOR_SYM gensym("live_arranger_grid_tiles")
-#define WRITE_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-// Grid
-#define GRID_SELECTED_CELL_COLOR_SYM gensym("live_display_handle_two")
-#define GRID_HOVERED_CELL_COLOR_HEX "#999999"
-#define GRID_STORED_CELL_COLOR_HEX "#666666"
-#define GRID_DEFAULT_CELL_COLOR_HEX "#333333"
-
-// Status
-#define STATUS_TEXT_COLOR_HEX "#999999"
-#define STATUS_CONFIRM_TEXT_COLOR_SYM gensym("live_display_handle_two")
-
-// Confirm
-#define CONFIRM_BUTTON_UP_BG_COLOR_SYM gensym("live_contrast_frame")
-#define CONFIRM_BUTTON_UP_TEXT_COLOR_SYM gensym("live_display_handle_two")
-#define CONFIRM_BUTTON_ON_BG_COLOR_SYM gensym("live_display_handle_two")
-#define CONFIRM_BUTTON_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-// Pagination
-#define PAGINATION_ARROW_OFF_COLOR_HEX "#444444"
-#define PAGINATION_ARROW_ON_COLOR_HEX "#666666"
-#define PAGINATION_ARROW_DOWN_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-
-// Tabs
-#define TAB_PRESETS_UP_BG_COLOR_HEX "#181818"
-#define TAB_PRESETS_UP_TEXT_COLOR_HEX "#555555"
-#define TAB_PRESETS_ON_BG_COLOR_SYM gensym("live_display_handle_two")
-#define TAB_PRESETS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-#define TAB_FILTERS_UP_BG_COLOR_HEX "#181818"
-#define TAB_FILTERS_UP_TEXT_COLOR_HEX "#555555"
-#define TAB_FILTERS_ON_BG_COLOR_HEX PATCHER_OBJECT_COLOR_HEX
-#define TAB_FILTERS_ON_TEXT_COLOR_SYM gensym("live_contrast_frame")
-
-#define TAB_BAR_COLOR_HEX "#181818"
-
 /* Dimensions & Text */
 
 // Grid
