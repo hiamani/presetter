@@ -374,6 +374,29 @@ void presetter_handle_preset_rename(t_presetter *p) {
     jbox_redraw((t_jbox *)p);
 }
 
+void presetter_handle_filter_rename(t_presetter *p) {
+    if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
+        presetter_write_filters_dictionary(p);
+        p->j_editing_filter_name = false;
+        p->j_write_filter_button_down = false;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    if (p->j_filter_name[0] != '\0') {
+        presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
+        presetter_write_filters_dictionary(p);
+        p->j_editing_filter_name = false;
+        p->j_write_filter_button_down = false;
+        jbox_redraw((t_jbox *)p);
+        return;
+    }
+
+    p->j_editing_filter_name = false;
+    p->j_write_filter_button_down = false;
+    jbox_redraw((t_jbox *)p);
+}
+
 // -----------------------------------------------------------------------------
 // Pointer Event Methods
 // -----------------------------------------------------------------------------
