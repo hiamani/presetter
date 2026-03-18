@@ -455,7 +455,9 @@ void presetter_reset_filter_all(t_presetter *p) {
 }
 
 bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
-    if (hashtab_getsize(p->j_applied_filters) == 0) {
+    long filters_size = hashtab_getsize(p->j_applied_filters);
+
+    if (filters_size == 0) {
         return false;
     }
 
@@ -463,16 +465,13 @@ bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
     t_symbol **kvs = NULL;
     hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
 
-    bool found_match = false;
+    long matches = 0;
 
     if (kvs == NULL) {
         return false;
     }
 
     for (long i = 0; i < kc; i++) {
-        if (found_match)
-            break;
-
         t_symbol *key = kvs[i];
         t_dictionary *obj = NULL;
         dictionary_getdictionary(p->j_filters, key, (t_object **)&obj);
@@ -492,12 +491,12 @@ bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
 
         for (long j = 0; j < ac; j++) {
             if (atom_gettype(&av[j]) == A_LONG && atom_getlong(&av[j]) == cell_idx) {
-                found_match = true;
+                matches++;
                 break;
             }
         }
     }
 
     sysmem_freeptr(kvs);
-    return found_match;
+    return matches == filters_size;
 }
