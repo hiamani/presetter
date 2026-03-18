@@ -233,7 +233,7 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         } else if (cell_hovered) {
             presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color, 1);
         } else if (cell_unfiltered) {
-            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 0.6);
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
         } else if (name) {
             presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
         } else {
@@ -300,19 +300,12 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
 
-    const char *status_text;
-    if (p->j_clear_filters_status_text[0] == '\0') {
-        status_text = presetter_get_preset_status_text(p);
-    } else {
-        status_text = p->j_clear_filters_status_text;
-    }
-
     char visible[1048];
-    presetter_trim_text_right(g, status_text, bounds.width, visible, sizeof(visible));
+    presetter_trim_text_right(g, presetter_get_preset_status_text(p), bounds.width, visible, sizeof(visible));
 
     t_jrgba color;
 
-    if (p->j_preset_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
+    if (p->j_preset_status_override != PRESETTER_NO_STATUS) {
         presetter_resolve_color(STATUS_CONFIRM_TEXT_COLOR, &color, 1);
     } else {
         presetter_resolve_color(STATUS_TEXT_COLOR, &color, 1);
@@ -325,10 +318,10 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
 }
 
 void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_clear_filters_status_text[0] != '\0')
+    if (hashtab_getsize(p->j_applied_filters) > 0)
         return;
 
-    if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
+    if (!(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
     t_bounds bounds = presetter_get_confirm_preset_ok_button_bounds(p, rect);
@@ -350,10 +343,10 @@ void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_r
 }
 
 void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_clear_filters_status_text[0] != '\0')
+    if (hashtab_getsize(p->j_applied_filters) > 0)
         return;
 
-    if (p->j_confirm_preset_status_text[0] == '\0' || !(p->j_confirm_preset_store || p->j_confirm_preset_delete))
+    if (!(p->j_confirm_preset_store || p->j_confirm_preset_delete))
         return;
 
     t_bounds bounds = presetter_get_confirm_preset_cancel_button_bounds(p, rect);
@@ -653,10 +646,10 @@ void presetter_draw_filter_grid(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 }
 
 void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_clear_filters_status_text[0] != '\0')
+    if (hashtab_getsize(p->j_applied_filters) > 0)
         return;
 
-    if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
+    if (!p->j_confirm_filter_delete)
         return;
 
     t_bounds bounds = presetter_get_confirm_filter_ok_button_bounds(p, rect);
@@ -678,10 +671,10 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
 }
 
 void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
-    if (p->j_clear_filters_status_text[0] != '\0')
+    if (hashtab_getsize(p->j_applied_filters) > 0)
         return;
 
-    if (p->j_confirm_filter_status_text[0] == '\0' || !p->j_confirm_filter_delete)
+    if (!p->j_confirm_filter_delete)
         return;
 
     t_bounds bounds = presetter_get_confirm_filter_cancel_button_bounds(p, rect);
@@ -711,19 +704,12 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jgraphics_font_extents extents;
     jgraphics_font_extents(g, &extents);
 
-    const char *status_text;
-    if (p->j_clear_filters_status_text[0] == '\0') {
-        status_text = presetter_get_filter_status_text(p);
-    } else {
-        status_text = p->j_clear_filters_status_text;
-    }
-
     char visible[1048];
-    presetter_trim_text_right(g, status_text, bounds.width, visible, sizeof(visible));
+    presetter_trim_text_right(g, presetter_get_filter_status_text(p), bounds.width, visible, sizeof(visible));
 
     t_jrgba color;
 
-    if (p->j_filter_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
+    if (p->j_filter_status_override != PRESETTER_NO_STATUS) {
         presetter_resolve_color(PATCHER_OBJECT_COLOR, &color, 1);
     } else {
         presetter_resolve_color(STATUS_TEXT_COLOR, &color, 1);
@@ -763,6 +749,6 @@ void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect 
     }
 
     presetter_draw_button(
-        g, &bounds, CLEAR_FILTERS_BUTTON_TEXT, p->j_clear_filters_button_down, &bg_color, &text_color
+        g, &bounds, p->j_clear_filters_button_text, p->j_clear_filters_button_down, &bg_color, &text_color
     );
 }

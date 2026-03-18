@@ -138,7 +138,7 @@ typedef struct _presetter {
     long j_filter_pagination_number;
 
     // Clear
-    char j_clear_filters_status_text[512];
+    char j_clear_filters_button_text[512];
     bool j_clear_filters_button_down;
 } t_presetter;
 

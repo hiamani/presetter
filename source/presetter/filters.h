@@ -35,7 +35,7 @@ bool presetter_drop_filter_slot_idx(t_presetter *p, long idx, long slot);
 
 /* Apply / Reset Filters*/
 
-void presetter_set_clear_filter_status(t_presetter *p);
+void presetter_set_clear_filter_button_text(t_presetter *p);
 
 bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s);
 

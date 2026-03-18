@@ -366,20 +366,20 @@ bool presetter_drop_filter_slot_idx(t_presetter *p, long idx, long slot) {
 
 /* Filter Hashtab Utilities */
 
-void presetter_set_clear_filter_status(t_presetter *p) {
+void presetter_set_clear_filter_button_text(t_presetter *p) {
     long size = hashtab_getsize(p->j_applied_filters);
     char *fmt_text = "";
 
     if (size == 0) {
-        p->j_clear_filters_status_text[0] = '\0';
+        p->j_clear_filters_button_text[0] = '\0';
         return;
     } else if (size == 1) {
-        fmt_text = "%ld filter applied";
+        fmt_text = "CLEAR %ld FILTER";
     } else {
-        fmt_text = "%ld filters applied";
+        fmt_text = "CLEAR %ld FILTERS";
     }
 
-    snprintf_zero(p->j_clear_filters_status_text, sizeof(p->j_clear_filters_status_text), fmt_text, size);
+    snprintf_zero(p->j_clear_filters_button_text, sizeof(p->j_clear_filters_button_text), fmt_text, size);
 }
 
 bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
@@ -392,7 +392,7 @@ bool presetter_apply_filter_sym(t_presetter *p, t_symbol *s) {
     bool stored = hashtab_storelong(p->j_applied_filters, result.index, (t_atom_long) true) == MAX_ERR_NONE;
 
     if (stored) {
-        presetter_set_clear_filter_status(p);
+        presetter_set_clear_filter_button_text(p);
         return true;
     }
 
@@ -409,7 +409,7 @@ bool presetter_apply_filter_idx(t_presetter *p, long idx) {
         hashtab_storelong(p->j_applied_filters, presetter_long_to_sym(idx), (t_atom_long) true) == MAX_ERR_NONE;
 
     if (stored) {
-        presetter_set_clear_filter_status(p);
+        presetter_set_clear_filter_button_text(p);
         return true;
     }
 
@@ -424,7 +424,7 @@ bool presetter_reset_filter_sym(t_presetter *p, t_symbol *s) {
     }
 
     if (hashtab_delete(p->j_applied_filters, result.index) == MAX_ERR_NONE) {
-        presetter_set_clear_filter_status(p);
+        presetter_set_clear_filter_button_text(p);
         return true;
     }
 
@@ -442,7 +442,7 @@ bool presetter_reset_filter_idx(t_presetter *p, long idx) {
     }
 
     if (hashtab_delete(p->j_applied_filters, presetter_long_to_sym(idx)) == MAX_ERR_NONE) {
-        presetter_set_clear_filter_status(p);
+        presetter_set_clear_filter_button_text(p);
         return true;
     }
 
@@ -451,7 +451,7 @@ bool presetter_reset_filter_idx(t_presetter *p, long idx) {
 
 void presetter_reset_filter_all(t_presetter *p) {
     hashtab_clear(p->j_applied_filters);
-    presetter_set_clear_filter_status(p);
+    presetter_set_clear_filter_button_text(p);
 }
 
 bool presetter_filtered_cell(t_presetter *p, long cell_idx) {

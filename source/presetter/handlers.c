@@ -1,4 +1,5 @@
 #include "ext_atomarray.h"
+#include "ext_hashtab.h"
 #include "ext_obex.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
@@ -467,7 +468,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 
     if (presetter_in_grid_bounds(p, &rect, &pt)) {
         if (p->j_selected_tab == gensym("presets")) {
-            bool filters_applied = hashtab_getsize(p->j_applied_filters) != 0;
+            bool filters_applied = hashtab_getsize(p->j_applied_filters) > 0;
             long cell_idx = presetter_get_preset_cell_idx(p, &rect, &pt);
 
             if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
@@ -725,7 +726,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         return;
     }
 
-    if (p->j_clear_filters_status_text[0] != '\0' && presetter_in_clear_filters_button_bounds(p, &rect, &pt)) {
+    if (hashtab_getsize(p->j_applied_filters) > 0 && presetter_in_clear_filters_button_bounds(p, &rect, &pt)) {
         p->j_clear_filters_button_down = true;
         jbox_redraw((t_jbox *)p);
     }

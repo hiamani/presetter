@@ -1,3 +1,4 @@
+#include "ext_hashtab.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
 
@@ -56,7 +57,7 @@ bool presetter_in_filters_tab_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
-/* Write Buttons */
+/* Buttons */
 
 void presetter_measure_button(t_presetter *p, char *text, double *outwidth, double *outheight) {
     jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
@@ -278,17 +279,26 @@ bool presetter_in_left_arrow_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
+t_bounds presetter_get_clear_filters_button_bounds(t_presetter *p, t_rect *rect);
+
 /* Status Bounds */
 
 t_bounds presetter_get_preset_status_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
-    // t_bounds ra_bounds = presetter_get_right_arrow_bounds(p, rect);
-    t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
+    t_bounds labounds = presetter_get_left_arrow_bounds(p, rect);
+    t_bounds cfbounds = presetter_get_clear_filters_button_bounds(p, rect);
+
+    double elem_x;
+    if (hashtab_getsize(p->j_applied_filters) > 0) {
+        elem_x = cfbounds.x;
+    } else {
+        elem_x = labounds.x;
+    }
 
     t_bounds bounds;
     bounds.x = STATUS_OFFSET_X;
     bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
-    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
+    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - elem_x);
     bounds.height = presetter_get_status_height(p);
     return bounds;
 }
@@ -428,12 +438,12 @@ bool presetter_in_write_filter_button_bounds(t_presetter *p, t_rect *rect, t_pt 
 
 t_bounds presetter_get_filter_status_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
-    t_bounds la_bounds = presetter_get_left_arrow_bounds(p, rect);
+    t_bounds labounds = presetter_get_left_arrow_bounds(p, rect);
 
     t_bounds bounds;
     bounds.x = STATUS_OFFSET_X;
     bounds.y = gbounds.y + gbounds.height + STATUS_OFFSET_Y;
-    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - la_bounds.x);
+    bounds.width = rect->width - STATUS_OFFSET_X - STATUS_PADDING_RIGHT - (rect->width - labounds.x);
     bounds.height = presetter_get_status_height(p);
     return bounds;
 }
@@ -484,18 +494,13 @@ bool presetter_in_confirm_filter_cancel_button_bounds(t_presetter *p, t_rect *re
 
 t_bounds presetter_get_clear_filters_button_bounds(t_presetter *p, t_rect *rect) {
     t_bounds gbounds = presetter_get_preset_grid_bounds(p, rect);
-
-    double text_width;
-    double text_height;
-
-    jgraphics_select_font_face(p->offscreen, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-    jgraphics_set_font_size(p->offscreen, STATUS_FONT_SIZE);
-    jgraphics_text_measure(p->offscreen, p->j_clear_filters_status_text, &text_width, &text_height);
+    t_bounds labounds = presetter_get_left_arrow_bounds(p, rect);
 
     t_bounds bounds;
-    bounds.x = text_width + CONFIRM_OK_BUTTON_MARGIN_LEFT;
+    presetter_measure_button(p, p->j_clear_filters_button_text, &bounds.width, &bounds.height);
+    bounds.x = labounds.x - bounds.width - 10;
     bounds.y = gbounds.y + gbounds.height + CONFIRM_BUTTON_OFFSET_Y;
-    presetter_measure_button(p, CLEAR_FILTERS_BUTTON_TEXT, &bounds.width, &bounds.height);
+
     return bounds;
 }
 
