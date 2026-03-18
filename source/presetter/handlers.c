@@ -1,6 +1,5 @@
 #include "ext_atomarray.h"
 #include "ext_obex.h"
-#include "ext_path.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
 #include "ext_sysmem.h"
