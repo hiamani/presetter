@@ -367,6 +367,7 @@ void presetter_handle_preset_rename(t_presetter *p) {
         p->j_preset_idle_status_text, sizeof(p->j_preset_idle_status_text), "Renamed Preset %ld",
         p->j_selected_preset_cell
     );
+    p->j_preset_status = PRESETTER_IDLE_STATUS;
     p->j_editing_preset_name = false;
 
     t_atom args[2];
@@ -385,6 +386,11 @@ void presetter_handle_preset_rename(t_presetter *p) {
 void presetter_handle_filter_rename(t_presetter *p) {
     if (presetter_rename_filter_idx(p, p->j_selected_filter_cell, gensym(p->j_filter_name))) {
         presetter_autowrite_filters_dictionary(p);
+        snprintf_zero(
+            p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Renamed Filter %ld",
+            p->j_selected_filter_cell
+        );
+        p->j_filter_status = PRESETTER_IDLE_STATUS;
         p->j_editing_filter_name = false;
         p->j_write_filter_button_down = false;
         jbox_redraw((t_jbox *)p);
@@ -394,6 +400,11 @@ void presetter_handle_filter_rename(t_presetter *p) {
     if (p->j_filter_name[0] != '\0') {
         presetter_add_filter_sym(p, gensym(p->j_filter_name), p->j_selected_filter_cell);
         presetter_autowrite_filters_dictionary(p);
+        snprintf_zero(
+            p->j_filter_idle_status_text, sizeof(p->j_filter_idle_status_text), "Created Filter %ld",
+            p->j_selected_filter_cell
+        );
+        p->j_filter_status = PRESETTER_IDLE_STATUS;
         p->j_editing_filter_name = false;
         p->j_write_filter_button_down = false;
         jbox_redraw((t_jbox *)p);
@@ -630,6 +641,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
             } else {
                 p->j_selected_filter_cell = -1;
                 p->j_editing_filter_name = false;
+                p->j_filter_status = PRESETTER_NO_STATUS;
                 snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
                 return;
             }
@@ -651,7 +663,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
                 p->j_selected_filter_cell
             );
 
-            p->j_preset_status = PRESETTER_IDLE_STATUS;
+            p->j_filter_status = PRESETTER_IDLE_STATUS;
             p->j_editing_filter_name = false;
 
             jbox_redraw((t_jbox *)p);
