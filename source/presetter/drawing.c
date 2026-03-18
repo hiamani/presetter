@@ -71,7 +71,7 @@ void presetter_draw_button(
 
 void presetter_draw_background(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba color;
-    presetter_resolve_color(BG_COLOR, &color);
+    presetter_resolve_color(BG_COLOR, &color, 1);
 
     jgraphics_rectangle_rounded(g, 0, 0, rect->width, rect->height, 4, 4);
     jgraphics_set_source_jrgba(g, &color);
@@ -151,7 +151,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     if (editing) {
         t_jrgba bg_color;
-        presetter_resolve_color(PRESET_NAME_EDITING_BG_COLOR, &bg_color);
+        presetter_resolve_color(PRESET_NAME_EDITING_BG_COLOR, &bg_color, 1);
 
         jgraphics_set_source_jrgba(g, &bg_color);
         jgraphics_rectangle(g, bounds.x, bounds.y, text_width, bounds.height);
@@ -165,18 +165,18 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     if (p->j_selected_tab == gensym("presets") && p->j_preset_name[0] != '\0') {
         if (p->j_editing_preset_name) {
-            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color);
+            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color, 1);
         } else {
-            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color);
+            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color, 1);
         }
     } else if (p->j_selected_tab == gensym("filters") && p->j_filter_name[0] != '\0') {
         if (p->j_editing_filter_name) {
-            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color);
+            presetter_resolve_color(PRESET_NAME_TEXT_EDITING_COLOR, &name_color, 1);
         } else {
-            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color);
+            presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color, 1);
         }
     } else {
-        presetter_resolve_color(PRESET_NAME_TEXT_UNSELECTED_COLOR, &name_color);
+        presetter_resolve_color(PRESET_NAME_TEXT_UNSELECTED_COLOR, &name_color, 1);
     }
 
     jgraphics_set_source_jrgba(g, &name_color);
@@ -194,14 +194,14 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba text_color;
 
     if (p->j_write_button_down) {
-        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else if (p->j_editing_preset_name) {
-        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(g, &bounds, WRITE_BUTTON_TEXT, p->j_write_button_down, &bg_color, &text_color);
@@ -221,22 +221,22 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
 
         if (p->j_selected_preset_cell == cell_idx) {
-            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color, 1);
         } else if (p->j_hovered_preset_cell == cell_idx) {
-            presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color, 1);
         } else if (filtered_cell) {
-            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
         } else if (name) {
-            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
         } else {
-            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color, 1);
         }
 
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
         jgraphics_set_source_jrgba(g, &color);
 
         if (applied_filters > 0 && name && !filtered_cell && p->j_selected_preset_cell != cell_idx) {
-            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color);
+            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color, 1);
             jgraphics_set_source_jrgba(g, &color);
             jgraphics_stroke(g);
         } else {
@@ -307,9 +307,9 @@ void presetter_draw_preset_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jrgba color;
 
     if (p->j_preset_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
-        presetter_resolve_color(STATUS_CONFIRM_TEXT_COLOR, &color);
+        presetter_resolve_color(STATUS_CONFIRM_TEXT_COLOR, &color, 1);
     } else {
-        presetter_resolve_color(STATUS_TEXT_COLOR, &color);
+        presetter_resolve_color(STATUS_TEXT_COLOR, &color, 1);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -331,11 +331,11 @@ void presetter_draw_confirm_preset_ok_button(t_presetter *p, t_jgraphics *g, t_r
     t_jrgba text_color;
 
     if (p->j_confirm_preset_ok_button_down) {
-        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(
@@ -356,11 +356,11 @@ void presetter_draw_confirm_preset_cancel_button(t_presetter *p, t_jgraphics *g,
     t_jrgba text_color;
 
     if (p->j_confirm_preset_cancel_button_down) {
-        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(
@@ -373,9 +373,9 @@ void presetter_draw_right_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba color;
     if (p->j_pagination_right_arrow_down) {
-        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color, 1);
     } else {
-        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color, 1);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -391,7 +391,7 @@ void presetter_draw_pagination_number(t_presetter *p, t_jgraphics *g, t_rect *re
     t_bounds bounds = presetter_get_pagination_number_bounds(p, rect);
 
     t_jrgba color;
-    presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
+    presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color, 1);
     jgraphics_set_source_jrgba(g, &color);
     jgraphics_select_font_face(g, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
     jgraphics_set_font_size(g, PAGINATION_NUMBER_FONT_SIZE);
@@ -413,13 +413,13 @@ void presetter_draw_left_arrow(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     t_jrgba color;
     if (p->j_pagination_left_arrow_down) {
-        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_DOWN_COLOR, &color, 1);
     } else if (p->j_selected_tab == gensym("presets") && p->j_preset_pagination_number > 1) {
-        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color, 1);
     } else if (p->j_selected_tab == gensym("filters") && p->j_filter_pagination_number > 1) {
-        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_ON_COLOR, &color, 1);
     } else {
-        presetter_resolve_color(PAGINATION_ARROW_OFF_COLOR, &color);
+        presetter_resolve_color(PAGINATION_ARROW_OFF_COLOR, &color, 1);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -435,7 +435,7 @@ void presetter_draw_tab_bar(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_bounds bounds = presetter_get_presets_tab_bounds(p, rect);
 
     t_jrgba bg_color;
-    presetter_resolve_color(TAB_BAR_COLOR, &bg_color);
+    presetter_resolve_color(TAB_BAR_COLOR, &bg_color, 1);
 
     jgraphics_rectangle(g, bounds.x, bounds.y, rect->width, bounds.height);
     jgraphics_set_source_jrgba(g, &bg_color);
@@ -449,11 +449,11 @@ void presetter_draw_presets_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba text_color;
 
     if (p->j_selected_tab == gensym("presets")) {
-        presetter_resolve_color(TAB_PRESETS_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(TAB_PRESETS_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(TAB_PRESETS_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(TAB_PRESETS_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(TAB_PRESETS_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(TAB_PRESETS_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(TAB_PRESETS_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(TAB_PRESETS_UP_TEXT_COLOR, &text_color, 1);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -480,11 +480,11 @@ void presetter_draw_filters_tab(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba text_color;
 
     if (p->j_selected_tab == gensym("filters")) {
-        presetter_resolve_color(TAB_FILTERS_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(TAB_FILTERS_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(TAB_FILTERS_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(TAB_FILTERS_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(TAB_FILTERS_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(TAB_FILTERS_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(TAB_FILTERS_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(TAB_FILTERS_UP_TEXT_COLOR, &text_color, 1);
     }
 
     jgraphics_rectangle(g, bounds.x, bounds.y, bounds.width, bounds.height);
@@ -515,9 +515,9 @@ void presetter_draw_filter_grid_row(
 
         t_jrgba bg_color;
         if (cell_idx == p->j_hovered_filter_cell) {
-            presetter_resolve_color(FILTER_GRID_HOVERED_CELL_BG_COLOR, &bg_color);
+            presetter_resolve_color(FILTER_GRID_HOVERED_CELL_BG_COLOR, &bg_color, 1);
         } else {
-            presetter_resolve_color(FILTER_GRID_CELL_BG_COLOR, &bg_color);
+            presetter_resolve_color(FILTER_GRID_CELL_BG_COLOR, &bg_color, 1);
         }
 
         jgraphics_rectangle_rounded(g, x, y, cell_width, FILTER_CELL_HEIGHT, 5, 5);
@@ -531,7 +531,7 @@ void presetter_draw_filter_grid_row(
         jgraphics_font_extents(g, &extents);
 
         t_jrgba stroke_color;
-        presetter_resolve_color(FILTER_GRID_SELECTED_CELL_STROKE_COLOR, &stroke_color);
+        presetter_resolve_color(FILTER_GRID_SELECTED_CELL_STROKE_COLOR, &stroke_color, 1);
 
         t_symbol *name = NULL;
         t_dictionary *dict = presetter_lookup_filter_slot(p, cell_idx);
@@ -547,11 +547,11 @@ void presetter_draw_filter_grid_row(
             t_jrgba text_color;
 
             if (val) {
-                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_TEXT_COLOR, &text_color);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_TEXT_COLOR, &text_color, 1);
             } else if (p->j_selected_filter_cell == cell_idx) {
-                presetter_resolve_color(FILTER_GRID_SELECTED_TEXT_COLOR, &text_color);
+                presetter_resolve_color(FILTER_GRID_SELECTED_TEXT_COLOR, &text_color, 1);
             } else {
-                presetter_resolve_color(FILTER_GRID_DEFAULT_TEXT_COLOR, &text_color);
+                presetter_resolve_color(FILTER_GRID_DEFAULT_TEXT_COLOR, &text_color, 1);
             }
 
             jgraphics_set_source_jrgba(g, &text_color);
@@ -564,11 +564,11 @@ void presetter_draw_filter_grid_row(
             t_jrgba circle_color;
 
             if (val) {
-                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CIRCLE_COLOR, &circle_color);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CIRCLE_COLOR, &circle_color, 1);
             } else if (p->j_selected_filter_cell == cell_idx) {
-                presetter_resolve_color(FILTER_GRID_SELECTED_CIRCLE_COLOR, &circle_color);
+                presetter_resolve_color(FILTER_GRID_SELECTED_CIRCLE_COLOR, &circle_color, 1);
             } else {
-                presetter_resolve_color(FILTER_GRID_DEFAULT_CIRCLE_COLOR, &circle_color);
+                presetter_resolve_color(FILTER_GRID_DEFAULT_CIRCLE_COLOR, &circle_color, 1);
             }
 
             jgraphics_set_source_jrgba(g, &circle_color);
@@ -576,18 +576,18 @@ void presetter_draw_filter_grid_row(
             jgraphics_fill(g);
 
             if (val) {
-                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CELL_STROKE_COLOR, &stroke_color);
+                presetter_resolve_color(FILTER_GRID_APPLIED_SELECTED_CELL_STROKE_COLOR, &stroke_color, 1);
             }
         } else {
             t_jrgba circle_color;
-            presetter_resolve_color(FILTER_GRID_EMPTY_CIRCLE_COLOR, &circle_color);
+            presetter_resolve_color(FILTER_GRID_EMPTY_CIRCLE_COLOR, &circle_color, 1);
             jgraphics_set_source_jrgba(g, &circle_color);
             jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
             jgraphics_fill(g);
 
             t_jrgba text_color;
-            presetter_resolve_color(FILTER_GRID_EMPTY_TEXT_COLOR, &text_color);
-            presetter_resolve_color(FILTER_GRID_EMPTY_CELL_STROKE_COLOR, &stroke_color);
+            presetter_resolve_color(FILTER_GRID_EMPTY_TEXT_COLOR, &text_color, 1);
+            presetter_resolve_color(FILTER_GRID_EMPTY_CELL_STROKE_COLOR, &stroke_color, 1);
 
             double text_y = y + (FILTER_CELL_HEIGHT + extents.ascent - extents.descent) / 2;
             jgraphics_set_source_jrgba(g, &text_color);
@@ -611,14 +611,14 @@ void presetter_draw_write_filter_button(t_presetter *p, t_jgraphics *g, t_rect *
     t_jrgba text_color;
 
     if (p->j_write_filter_button_down) {
-        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else if (p->j_editing_filter_name) {
-        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color);
-        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(g, &bounds, WRITE_FILTER_BUTTON_TEXT, p->j_write_filter_button_down, &bg_color, &text_color);
@@ -659,11 +659,11 @@ void presetter_draw_confirm_filter_ok_button(t_presetter *p, t_jgraphics *g, t_r
     t_jrgba text_color;
 
     if (p->j_confirm_filter_ok_button_down) {
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(
@@ -684,11 +684,11 @@ void presetter_draw_confirm_filter_cancel_button(t_presetter *p, t_jgraphics *g,
     t_jrgba text_color;
 
     if (p->j_confirm_filter_cancel_button_down) {
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else {
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+        presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
     }
 
     presetter_draw_button(
@@ -718,9 +718,9 @@ void presetter_draw_filter_status(t_presetter *p, t_jgraphics *g, t_rect *rect) 
     t_jrgba color;
 
     if (p->j_filter_status_override != PRESETTER_NO_STATUS || p->j_clear_filters_status_text[0] != '\0') {
-        presetter_resolve_color(PATCHER_OBJECT_COLOR, &color);
+        presetter_resolve_color(PATCHER_OBJECT_COLOR, &color, 1);
     } else {
-        presetter_resolve_color(STATUS_TEXT_COLOR, &color);
+        presetter_resolve_color(STATUS_TEXT_COLOR, &color, 1);
     }
 
     jgraphics_set_source_jrgba(g, &color);
@@ -740,19 +740,19 @@ void presetter_draw_clear_filters_button(t_presetter *p, t_jgraphics *g, t_rect 
 
     if (p->j_selected_tab == gensym("presets")) {
         if (p->j_clear_filters_button_down) {
-            presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-            presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+            presetter_resolve_color(CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+            presetter_resolve_color(CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
         } else {
-            presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-            presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+            presetter_resolve_color(CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+            presetter_resolve_color(CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
         }
     } else {
         if (p->j_clear_filters_button_down) {
-            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color);
-            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_BG_COLOR, &bg_color, 1);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_ON_TEXT_COLOR, &text_color, 1);
         } else {
-            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color);
-            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_BG_COLOR, &bg_color, 1);
+            presetter_resolve_color(FILTER_CONFIRM_BUTTON_UP_TEXT_COLOR, &text_color, 1);
         }
     }
 

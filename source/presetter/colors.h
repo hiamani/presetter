@@ -97,6 +97,6 @@ typedef struct _p_color {
 /* Utilities */
 
 void presetter_hex_to_rgba(t_jrgba *color, const char *hex, double alpha);
-void presetter_resolve_color(p_color pc, t_jrgba *color);
+void presetter_resolve_color(p_color pc, t_jrgba *color, double alpha);
 
 #endif
