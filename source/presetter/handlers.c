@@ -971,7 +971,9 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
     return 0;
 }
 
-/* Main Paint */
+//------------------------------------------------------------------------------
+// Paint Method
+//------------------------------------------------------------------------------
 
 void presetter_paint(t_presetter *p, t_object *patcherview) {
     t_jgraphics *g = (t_jgraphics *)patcherview_get_jgraphics(patcherview);
