@@ -39,6 +39,7 @@ typedef struct _p_color {
 #define GRID_SELECTED_CELL_COLOR (p_color){COLOR_SYM, "live_display_handle_two"}
 #define GRID_HOVERED_CELL_COLOR (p_color){COLOR_HEX, "#999999"}
 #define GRID_STORED_CELL_COLOR (p_color){COLOR_HEX, "#666666"}
+#define GRID_FILTERED_CELL_COLOR (p_color){COLOR_SYM, "live_display_handle_two"}
 #define GRID_DEFAULT_CELL_COLOR (p_color){COLOR_HEX, "#333333"}
 
 // Status

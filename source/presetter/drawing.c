@@ -210,22 +210,30 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 /* Grid */
 
 void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *dim, int row_idx, double y) {
+    long applied_filters = hashtab_getsize(p->j_applied_filters);
+
     for (int i = 0; i < dim->columns; i++) {
         double x = (double)i * CELL_TOTAL_SIZE + CELL_PADDING + GRID_OFFSET_X;
         int cell_idx = (i + dim->columns * row_idx + 1) + presetter_get_preset_grid_offset(p, dim);
 
         t_jrgba color;
+        bool use_stroke = false;
+
         t_symbol *name = presetter_lookup_preset_slot(p, cell_idx);
+        bool cell_selected = p->j_selected_preset_cell == cell_idx;
+        bool cell_hovered = p->j_hovered_preset_cell == cell_idx;
+        bool cell_filtered = applied_filters > 0 && name && presetter_filtered_cell(p, cell_idx);
+        bool cell_unfiltered = applied_filters > 0 && name && !cell_filtered;
 
-        long applied_filters = hashtab_getsize(p->j_applied_filters);
-        bool filtered_cell = presetter_filtered_cell(p, cell_idx) && name;
-
-        if (p->j_selected_preset_cell == cell_idx) {
+        if (cell_filtered && !cell_selected) {
+            presetter_resolve_color(GRID_FILTERED_CELL_COLOR, &color, 1);
+            use_stroke = true;
+        } else if (cell_selected) {
             presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color, 1);
-        } else if (p->j_hovered_preset_cell == cell_idx) {
+        } else if (cell_hovered) {
             presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color, 1);
-        } else if (filtered_cell) {
-            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
+        } else if (cell_unfiltered) {
+            presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 0.6);
         } else if (name) {
             presetter_resolve_color(GRID_STORED_CELL_COLOR, &color, 1);
         } else {
@@ -235,9 +243,7 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         jgraphics_rectangle_rounded(g, x, y, CELL_SIZE, CELL_SIZE, 3, 3);
         jgraphics_set_source_jrgba(g, &color);
 
-        if (applied_filters > 0 && name && !filtered_cell && p->j_selected_preset_cell != cell_idx) {
-            presetter_resolve_color(GRID_DEFAULT_CELL_COLOR, &color, 1);
-            jgraphics_set_source_jrgba(g, &color);
+        if (use_stroke) {
             jgraphics_stroke(g);
         } else {
             jgraphics_fill(g);
