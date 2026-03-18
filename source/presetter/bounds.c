@@ -498,7 +498,7 @@ t_bounds presetter_get_clear_filters_button_bounds(t_presetter *p, t_rect *rect)
 
     t_bounds bounds;
     presetter_measure_button(p, p->j_clear_filters_button_text, &bounds.width, &bounds.height);
-    bounds.x = labounds.x - bounds.width - 10;
+    bounds.x = labounds.x - bounds.width - CLEAR_FILTERS_BUTTON_MARGIN_RIGHT;
     bounds.y = gbounds.y + gbounds.height + CONFIRM_BUTTON_OFFSET_Y;
 
     return bounds;
