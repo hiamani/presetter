@@ -1,7 +1,7 @@
 #include "ext_hashtab.h"
-#include "utilities.h"
 
 #include "structs.h"
+#include "utilities.h"
 
 t_symbol *presetter_lookup_preset_slot(t_presetter *p, long index) {
     t_symbol *name = NULL;

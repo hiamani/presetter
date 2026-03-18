@@ -4,10 +4,6 @@
 #include "constants.h"
 #include "structs.h"
 
-// -----------------------------------------------------------------------------
-// Element Bounds
-// -----------------------------------------------------------------------------
-
 bool presetter_generic_in_bounds(t_bounds *bounds, t_pt *pt) {
     bool in_x = pt->x >= bounds->x && pt->x <= bounds->width + bounds->x;
     bool in_y = pt->y >= bounds->y && pt->y <= bounds->height + bounds->y;

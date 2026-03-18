@@ -286,7 +286,6 @@ void presetter_writefilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv
 
 // Pass through unknown messages silently
 void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
-    // post("%s", s->s_name);
     return;
 }
 

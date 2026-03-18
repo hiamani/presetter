@@ -59,7 +59,7 @@
 #define TAB_PRESETS_TEXT "PRESETS"
 #define TAB_FILTERS_TEXT "FILTERS"
 
-/** Filters **/
+// Filters
 
 #define FILTER_CELL_MIN_WIDTH 120
 #define FILTER_CELL_HEIGHT 20
@@ -67,4 +67,4 @@
 
 #define CLEAR_FILTERS_BUTTON_TEXT "CLEAR"
 
-#endif // !PRESETTER_CONSTANTS
+#endif

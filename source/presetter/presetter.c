@@ -1,7 +1,7 @@
-#include "ext.h"
-
+#include "ext_obex.h"
 #include "ext_obex_util.h"
 #include "ext_proto.h"
+
 #include "handlers.h"
 #include "structs.h"
 #include "utilities.h"
@@ -69,14 +69,14 @@ void ext_main(void *r) {
     CLASS_ATTR_LABEL(c, "pattrstorage", 0, "pattrstorage Object Name");
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
+    CLASS_ATTR_SYM(c, "filename", 0, t_presetter, j_filters_filename);
+    CLASS_ATTR_LABEL(c, "filename", 0, "Filename");
+    CLASS_ATTR_SAVE(c, "filename", 0);
+
     CLASS_ATTR_CHAR(c, "autowrite", 0, t_presetter, j_filters_autowrite);
     CLASS_ATTR_LABEL(c, "autowrite", 0, "Autowrite Filters JSON");
     CLASS_ATTR_STYLE(c, "autowrite", 0, "onoff");
     CLASS_ATTR_SAVE(c, "autowrite", 0);
-
-    CLASS_ATTR_SYM(c, "filename", 0, t_presetter, j_filters_filename);
-    CLASS_ATTR_LABEL(c, "filename", 0, "Filename");
-    CLASS_ATTR_SAVE(c, "filename", 0);
 
     // Patching Rect
     CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 289. 170.");
