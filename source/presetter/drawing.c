@@ -230,7 +230,12 @@ void presetter_draw_preset_grid_row(t_presetter *p, t_jgraphics *g, t_grid_dim *
         bool cell_filtered = applied_filters > 0 && name && presetter_filtered_cell(p, cell_idx);
         bool cell_unfiltered = applied_filters > 0 && name && !cell_filtered;
 
-        if (cell_filtered && !cell_selected) {
+        if (cell_filtered && cell_selected) {
+            presetter_resolve_color(GRID_SELECTED_CELL_COLOR, &color, 1);
+        } else if (cell_filtered && cell_hovered) {
+            presetter_resolve_color(GRID_HOVERED_CELL_COLOR, &color, 1);
+            use_stroke = true;
+        } else if (cell_filtered) {
             presetter_resolve_color(GRID_FILTERED_CELL_COLOR, &color, 1);
             use_stroke = true;
         } else if (cell_selected) {
