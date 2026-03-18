@@ -34,6 +34,66 @@
       </description>
     </method>
 
+    <method name="(mouse)">
+      <arglist>
+      </arglist>
+      <digest>
+        Store and recall presets and filters
+      </digest>
+      <description>
+        Clicking a cell in the presets tab will recall a preset.
+        <br/>
+        <br/>
+        Shift-clicking a cell in the presets tab will store a preset.
+        <br/>
+        <br/>
+        Shift-Option/Alt clicking a cell in the presets tab will remove a
+        preset.
+        <br/>
+        <br/>
+        A confirmation dialog shows when storing and deleting presets.
+        <br/>
+        <br/>
+        Clicking the name of a selected preset will allow you to type in a new
+        name. Clicking "WRITE NAME" or pressing enter will write the new name.
+        <br/>
+        <br/>
+        Clicking a cell in the filters tab will select it for renaming.
+        <br/>
+        <br/>
+        Clicking the name of a selected filter will allow you to type in a new
+        name.
+        <br/>
+        <br/>
+        Clicking the name of an empty filter cell will allow you to type in a
+        name for a new preset.
+        <br/>
+        <br/>
+        While editing a filter's name- or creating a new one- clicking
+        "WRITE FILTER" or pressing enter will write the new name of a
+        selected filter or add a new filter if the selected cell is empty.
+        <br/>
+        <br/>
+        Shift-Option/Alt clicking a cell in the filters tab will remove a
+        filter.
+        <br/>
+        <br/>
+        A confirmation dialog shows when deleting a filter.
+        <br/>
+        <br/>
+        Clicking the dot within a preset cell applies the filter and activates
+        <i>filter mode</i>. Clicking the dot again resets the filter. Multiple
+        filters may be applied at once. A "CLEAR" dialog will show when filters
+        are applied.
+        <br/>
+        <br/>
+        Shift-clicking a cell in the presets tab in <i>filter mode</i> will
+        add the preset slot to the currently applied filters. If the preset slot
+        exists in any filter, shift-clicking the slot removes the slot from all
+        applied filters.
+      </description>
+    </method>
+
     <method name="addfilter">
       <arglist>
         <arg name="filter-name" optional="0" type="symbol" />
@@ -177,7 +237,6 @@
     </method>
   </methodlist>
 
-  <!--ATTRIBUTES-->
   <attributelist>
     <attribute name="pattrstorage" get="1" set="1" type="symbol" size="1" >
       <digest>Which pattrstorage object to bind to</digest>
