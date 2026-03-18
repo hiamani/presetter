@@ -85,6 +85,8 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
 
     char text[512];
 
+    bool empty_filter_cell = false;
+
     if (p->j_selected_tab == gensym("presets")) {
         if (p->j_editing_preset_name) {
             snprintf_zero(text, sizeof(text), "> %s_", p->j_preset_name);
@@ -103,6 +105,7 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
                 snprintf_zero(text, sizeof(text), "%s", p->j_filter_name);
             } else if (p->j_selected_filter_cell != -1) {
                 snprintf_zero(text, sizeof(text), "%s", "Click to create new");
+                empty_filter_cell = true;
             } else {
                 snprintf_zero(text, sizeof(text), "%s", "No filter selected");
             }
@@ -175,6 +178,8 @@ void presetter_draw_write_name(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         } else {
             presetter_resolve_color(PRESET_NAME_TEXT_DEFAULT_COLOR, &name_color, 1);
         }
+    } else if (empty_filter_cell) {
+        presetter_resolve_color(PATCHER_OBJECT_COLOR, &name_color, 1);
     } else {
         presetter_resolve_color(PRESET_NAME_TEXT_UNSELECTED_COLOR, &name_color, 1);
     }
@@ -571,7 +576,7 @@ void presetter_draw_filter_grid_row(
             }
 
             jgraphics_set_source_jrgba(g, &circle_color);
-            jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
+            jgraphics_rectangle_rounded(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8, 4, 4);
             jgraphics_fill(g);
 
             if (val) {
@@ -581,7 +586,7 @@ void presetter_draw_filter_grid_row(
             t_jrgba circle_color;
             presetter_resolve_color(FILTER_GRID_EMPTY_CIRCLE_COLOR, &circle_color, 1);
             jgraphics_set_source_jrgba(g, &circle_color);
-            jgraphics_ellipse(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8);
+            jgraphics_rectangle_rounded(g, x + 6, y + ((double)FILTER_CELL_HEIGHT - 8) / 2, 8, 8, 4, 4);
             jgraphics_fill(g);
 
             t_jrgba text_color;
