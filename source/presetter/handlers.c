@@ -519,7 +519,7 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
     bool filters_applied = hashtab_getsize(p->j_applied_filters) > 0;
     long cell_idx = presetter_get_preset_cell_idx(p, rect, pt);
 
-    if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) && !filters_applied) {
+    if ((modifiers & eLeftButton) && (modifiers & eAltKey) && (modifiers & eShiftKey) && !filters_applied) {
         p->j_editing_preset_name = false;
         p->j_confirm_preset_delete = true;
         p->j_confirm_preset_cell = cell_idx;
@@ -531,7 +531,7 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
         return;
     }
 
-    if (modifiers & eLeftButton && !(modifiers & eShiftKey) && !(modifiers & eAltKey)) {
+    if ((modifiers & eLeftButton) && !(modifiers & eShiftKey) && !(modifiers & eAltKey)) {
         p->j_editing_preset_name = false;
         presetter_clear_confirm(p);
         presetter_handle_recall(p, cell_idx);
@@ -539,7 +539,7 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
         return;
     }
 
-    if (modifiers & eLeftButton && modifiers & eShiftKey && !(modifiers & eAltKey)) {
+    if ((modifiers & eLeftButton) && (modifiers & eShiftKey) && !(modifiers & eAltKey)) {
         if (filters_applied) {
             presetter_preset_grid_onclick_toggle_filter(p, cell_idx);
         } else {
@@ -560,7 +560,7 @@ void presetter_filter_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
     t_cell_pos pos = presetter_get_filter_cell_pos(p, rect, pt);
     long cell_idx = presetter_get_filter_cell_idx(p, rect, pt);
 
-    if (modifiers & eLeftButton && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
+    if ((modifiers & eLeftButton) && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
         !((modifiers & eCommandKey) || (modifiers & eControlKey)) && presetter_lookup_filter_slot(p, cell_idx)) {
         p->j_editing_filter_name = false;
         p->j_confirm_filter_delete = true;
