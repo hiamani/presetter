@@ -1,8 +1,1 @@
-[
-{
-  "directory": "/Users/amani/Documents/Max 9/Packages/presetter/build/source/presetter",
-  "command": "/usr/bin/cc -Dpresetter_EXPORTS -I\"/Users/amani/Documents/Max 9/Packages/presetter/source/max-sdk-base/script/../c74support/max-includes\" -F\"/Users/amani/Documents/Max 9/Packages/presetter/source/max-sdk-base/c74support/msp-includes\" -F\"/Users/amani/Documents/Max 9/Packages/presetter/source/max-sdk-base/c74support/jit-includes\"  -arch x86_64 -fPIC -o CMakeFiles/presetter.dir/presetter.c.o -c \"/Users/amani/Documents/Max 9/Packages/presetter/source/presetter/presetter.c\"",
-  "file": "/Users/amani/Documents/Max 9/Packages/presetter/source/presetter/presetter.c",
-  "output": "source/presetter/CMakeFiles/presetter.dir/presetter.c.o"
-}
-]
+build/compile_commands.json

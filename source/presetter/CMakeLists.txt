@@ -1,5 +1,7 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/../max-sdk-base/script/max-pretarget.cmake)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 include_directories(
     "${MAX_SDK_INCLUDES}"
 )
