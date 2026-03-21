@@ -2,12 +2,12 @@
 #include "ext_proto.h"
 #include "ext_strings.h"
 #include "jgraphics.h"
+#include "jpatcher_api.h"
 
 #include "bounds.h"
 #include "colors.h"
 #include "constants.h"
 #include "filters.h"
-#include "jpatcher_api.h"
 #include "presets.h"
 #include "structs.h"
 #include "utilities.h"
