@@ -2,7 +2,7 @@
 
 An enhanced preset manager external for Max, with naming, pagination, and filters.
 
-![img](resources/presetter.png)
+<img src="https://github.com/hiamani/presetter/blob/main/resources/presetter.png?raw=true" width="400"/>
 
 ## Build
 
