@@ -1,3 +1,4 @@
 /.cache
 /build
 /externals
+.DS_Store
