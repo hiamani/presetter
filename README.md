@@ -1,6 +1,6 @@
 # presetter
 
-An enhanced preset manager external for Max.
+An enhanced preset manager external for Max, with naming, pagination, and filters.
 
 ![img](resources/presetter.png)
 
@@ -41,7 +41,6 @@ your platform!
 
 The initial prototype was build using v8ui. See [prototype-js](/prototype-js/).
 
-## TODO
+## Roadmap
 
-- Filters!
-- Interpolation(ish)!
+The main feature missing from presetter is interpolation between presets. An upcoming release focused on providing a smooth user interface for this is forthcoming!
