@@ -1,4 +1,5 @@
 #include "ext_atomarray.h"
+#include "ext_dictionary.h"
 #include "ext_hashtab.h"
 #include "ext_obex.h"
 #include "ext_proto.h"
@@ -559,9 +560,9 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
 void presetter_filter_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long modifiers) {
     t_cell_pos pos = presetter_get_filter_cell_pos(p, rect, pt);
     long cell_idx = presetter_get_filter_cell_idx(p, rect, pt);
+    t_dictionary *filter_slot = presetter_lookup_filter_slot(p, cell_idx);
 
-    if ((modifiers & eLeftButton) && (modifiers & eAltKey) && (modifiers & eShiftKey) &&
-        !((modifiers & eCommandKey) || (modifiers & eControlKey)) && presetter_lookup_filter_slot(p, cell_idx)) {
+    if ((modifiers & eLeftButton) && (modifiers & eAltKey) && (modifiers & eShiftKey) && filter_slot) {
         p->j_editing_filter_name = false;
         p->j_confirm_filter_delete = true;
         p->j_confirm_filter_cell = cell_idx;
@@ -919,6 +920,10 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
         // Escape
         if (keycode == -3) {
             p->j_editing_preset_name = false;
+            t_symbol *slot = presetter_lookup_preset_slot(p, p->j_selected_preset_cell);
+            if (slot) {
+                snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
+            }
             jbox_redraw((t_jbox *)p);
             return 1;
         }
@@ -953,6 +958,11 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
         // Escape
         if (keycode == -3) {
             p->j_editing_filter_name = false;
+            t_symbol *name = NULL;
+            t_dictionary *dict = presetter_lookup_filter_slot(p, p->j_selected_filter_cell);
+            if (dict && dictionary_getsym(dict, gensym("name"), &name) == MAX_ERR_NONE && name) {
+                snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", name->s_name);
+            }
             jbox_redraw((t_jbox *)p);
             return 1;
         }
