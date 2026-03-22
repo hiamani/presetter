@@ -294,7 +294,7 @@ void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 // Callback Methods
 // -----------------------------------------------------------------------------
 
-void presetter_handle_recall(t_presetter *p, long cell_idx) {
+void presetter_handle_preset_recall(t_presetter *p, long cell_idx) {
     t_object *ps = presetter_find_pattrstorage(p);
     if (!ps)
         return;
@@ -321,7 +321,7 @@ void presetter_handle_recall(t_presetter *p, long cell_idx) {
     }
 }
 
-void presetter_handle_store(t_presetter *p, long cell_idx) {
+void presetter_handle_preset_store(t_presetter *p, long cell_idx) {
     t_object *ps = presetter_find_pattrstorage(p);
     if (!ps)
         return;
@@ -338,7 +338,7 @@ void presetter_handle_store(t_presetter *p, long cell_idx) {
     jbox_redraw((t_jbox *)p);
 }
 
-void presetter_handle_delete(t_presetter *p, long cell_idx) {
+void presetter_handle_preset_delete(t_presetter *p, long cell_idx) {
     t_object *ps = presetter_find_pattrstorage(p);
     if (!ps)
         return;
@@ -535,7 +535,7 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
     if ((modifiers & eLeftButton) && !(modifiers & eShiftKey) && !(modifiers & eAltKey)) {
         p->j_editing_preset_name = false;
         presetter_clear_confirm(p);
-        presetter_handle_recall(p, cell_idx);
+        presetter_handle_preset_recall(p, cell_idx);
         jbox_redraw((t_jbox *)p);
         return;
     }
@@ -769,9 +769,9 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
 
     if (p->j_confirm_preset_ok_button_down) {
         if (p->j_confirm_preset_store && p->j_confirm_preset_cell != -1) {
-            presetter_handle_store(p, p->j_confirm_preset_cell);
+            presetter_handle_preset_store(p, p->j_confirm_preset_cell);
         } else if (p->j_confirm_preset_delete && p->j_confirm_preset_cell != -1) {
-            presetter_handle_delete(p, p->j_confirm_preset_cell);
+            presetter_handle_preset_delete(p, p->j_confirm_preset_cell);
         }
         presetter_clear_confirm(p);
         jbox_redraw((t_jbox *)p);
