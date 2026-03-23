@@ -105,7 +105,17 @@ short presetter_get_patcher_path(t_presetter *p) {
     if (!patcher)
         return 0;
 
-    t_symbol *patcher_fpath = object_attr_getsym(patcher, gensym("filepath"));
+    t_object *parent = patcher;
+
+    while (parent) {
+        t_object *next = jpatcher_get_parentpatcher(parent);
+        if (!next) {
+            break;
+        }
+        parent = next;
+    }
+
+    t_symbol *patcher_fpath = object_attr_getsym(parent, gensym("filepath"));
 
     if (!patcher_fpath || patcher_fpath == gensym(""))
         return 0;
