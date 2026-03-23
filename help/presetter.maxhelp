@@ -35,6 +35,48 @@
                             {
                                 "box": {
                                     "bubble": 1,
+                                    "bubblepoint": 0.0,
+                                    "bubbleside": 0,
+                                    "id": "obj-16",
+                                    "maxclass": "comment",
+                                    "numinlets": 1,
+                                    "numoutlets": 0,
+                                    "patching_rect": [ 335.0, 561.0, 166.0, 39.0 ],
+                                    "text": "Pagination works here too!",
+                                    "textjustification": 1
+                                }
+                            },
+                            {
+                                "box": {
+                                    "bubble": 1,
+                                    "id": "obj-6",
+                                    "linecount": 3,
+                                    "maxclass": "comment",
+                                    "numinlets": 1,
+                                    "numoutlets": 0,
+                                    "patching_rect": [ 335.0, 503.0, 188.0, 51.0 ],
+                                    "presentation_linecount": 3,
+                                    "text": "Click the square within a cell to apply the filter. Multiple filters can be aplied at once!",
+                                    "textjustification": 1
+                                }
+                            },
+                            {
+                                "box": {
+                                    "bubble": 1,
+                                    "id": "obj-4",
+                                    "linecount": 6,
+                                    "maxclass": "comment",
+                                    "numinlets": 1,
+                                    "numoutlets": 0,
+                                    "patching_rect": [ 335.0, 404.0, 187.0, 91.0 ],
+                                    "presentation_linecount": 6,
+                                    "text": "Click a cell to select a filter. Shift-option/alt-clicking a cell will delete a filter. Selected filters can be renamed. If an empty cell is selected, renaming creates a new filter.",
+                                    "textjustification": 1
+                                }
+                            },
+                            {
+                                "box": {
+                                    "bubble": 1,
                                     "id": "obj-29",
                                     "linecount": 2,
                                     "maxclass": "comment",
@@ -223,7 +265,7 @@
                                     "maxclass": "comment",
                                     "numinlets": 1,
                                     "numoutlets": 0,
-                                    "patching_rect": [ 505.0, 380.0, 152.0, 39.0 ],
+                                    "patching_rect": [ 643.0, 380.0, 152.0, 39.0 ],
                                     "text": "Our pattr objects!",
                                     "textjustification": 1
                                 }
@@ -235,7 +277,7 @@
                                     "numinlets": 1,
                                     "numoutlets": 3,
                                     "outlettype": [ "", "", "" ],
-                                    "patching_rect": [ 618.0, 456.0, 40.0, 22.0 ],
+                                    "patching_rect": [ 756.0, 456.0, 40.0, 22.0 ],
                                     "restore": [ "This is Preset 1's text." ],
                                     "saved_object_attributes": {
                                         "parameter_enable": 0,
@@ -254,7 +296,7 @@
                                     "numoutlets": 4,
                                     "outlettype": [ "", "int", "", "" ],
                                     "parameter_enable": 0,
-                                    "patching_rect": [ 618.0, 503.0, 100.0, 50.0 ],
+                                    "patching_rect": [ 756.0, 503.0, 100.0, 50.0 ],
                                     "text": "This is Preset 1's text.",
                                     "varname": "textedit"
                                 }
@@ -268,7 +310,7 @@
                                     "numoutlets": 2,
                                     "outlettype": [ "", "bang" ],
                                     "parameter_enable": 0,
-                                    "patching_rect": [ 533.0, 503.0, 50.0, 22.0 ],
+                                    "patching_rect": [ 671.0, 503.0, 50.0, 22.0 ],
                                     "varname": "number[1]"
                                 }
                             },
@@ -281,7 +323,7 @@
                                     "numoutlets": 2,
                                     "outlettype": [ "", "bang" ],
                                     "parameter_enable": 0,
-                                    "patching_rect": [ 443.0, 503.0, 50.0, 22.0 ],
+                                    "patching_rect": [ 581.0, 503.0, 50.0, 22.0 ],
                                     "varname": "number"
                                 }
                             },
@@ -292,7 +334,7 @@
                                     "numinlets": 1,
                                     "numoutlets": 3,
                                     "outlettype": [ "", "", "" ],
-                                    "patching_rect": [ 533.0, 456.0, 40.0, 22.0 ],
+                                    "patching_rect": [ 671.0, 456.0, 40.0, 22.0 ],
                                     "restore": [ 24.0 ],
                                     "saved_object_attributes": {
                                         "parameter_enable": 0,
@@ -309,7 +351,7 @@
                                     "numinlets": 1,
                                     "numoutlets": 3,
                                     "outlettype": [ "", "", "" ],
-                                    "patching_rect": [ 443.0, 456.0, 40.0, 22.0 ],
+                                    "patching_rect": [ 581.0, 456.0, 40.0, 22.0 ],
                                     "restore": [ 19.0 ],
                                     "saved_object_attributes": {
                                         "parameter_enable": 0,
@@ -357,7 +399,7 @@
                                     "maxclass": "panel",
                                     "numinlets": 1,
                                     "numoutlets": 0,
-                                    "patching_rect": [ 428.0, 427.0, 306.0, 146.0 ]
+                                    "patching_rect": [ 566.0, 427.0, 306.0, 146.0 ]
                                 }
                             }
                         ],
@@ -372,14 +414,14 @@
                             {
                                 "patchline": {
                                     "destination": [ "obj-20", 0 ],
-                                    "midpoints": [ 463.0, 488.0, 452.5, 488.0 ],
+                                    "midpoints": [ 601.0, 488.0, 590.5, 488.0 ],
                                     "source": [ "obj-11", 1 ]
                                 }
                             },
                             {
                                 "patchline": {
                                     "destination": [ "obj-21", 0 ],
-                                    "midpoints": [ 553.0, 488.0, 542.5, 488.0 ],
+                                    "midpoints": [ 691.0, 488.0, 680.5, 488.0 ],
                                     "source": [ "obj-12", 1 ]
                                 }
                             },
@@ -414,7 +456,7 @@
                             {
                                 "patchline": {
                                     "destination": [ "obj-1", 0 ],
-                                    "midpoints": [ 638.0, 488.0, 627.5, 488.0 ],
+                                    "midpoints": [ 776.0, 488.0, 765.5, 488.0 ],
                                     "source": [ "obj-2", 1 ]
                                 }
                             },
