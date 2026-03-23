@@ -1,0 +1,34 @@
+{
+    "pattrstorage": {
+        "name": "repo",
+        "slots": {
+            "1": {
+                "id": 1,
+                "name": "Preset 1",
+                "data": {
+                    "u476008155[2]": [ "This is Preset 1's text." ],
+                    "u476008155[1]": [ 24.0 ],
+                    "u476008155": [ 19.0 ]
+                }
+            },
+            "2": {
+                "id": 2,
+                "name": "Preset 2!",
+                "data": {
+                    "u476008155[2]": [ "Next we have Preset 2's amazing text!" ],
+                    "u476008155[1]": [ 219.0 ],
+                    "u476008155": [ 400.0 ]
+                }
+            },
+            "3": {
+                "id": 3,
+                "name": "Fancy Preset 3",
+                "data": {
+                    "u476008155[2]": [ "Hello world!" ],
+                    "u476008155[1]": [ 48.0 ],
+                    "u476008155": [ 54.0 ]
+                }
+            }
+        }
+    }
+}
