@@ -232,7 +232,8 @@
       </digest>
       <description>
         The word <i>writefilters</i> writes filters to the file specified by the
-        <i>filename</i> attribute.
+        <i>filename</i> attribute. If no filename is attribute is empty, the
+        default file <b>filters.json</b> will be written.
       </description>
     </method>
   </methodlist>
@@ -253,6 +254,9 @@
         <i>readfilters</i> and <i>writefilters</i> messages. If the
         <i>autofilter</i> attribute is set, all filter operations write to this
         filename after they're completed.
+
+        The provided filename will be used to write a JSON file adjacent to the
+        patcher file.
       </description>
     </attribute>
 

@@ -3,6 +3,7 @@
 #include "ext_post.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
+#include "jpatcher_api.h"
 
 // Local Includes
 #include "structs.h"
@@ -155,13 +156,18 @@ void presetter_read_filters_dictionary(t_presetter *p) {
 }
 
 void presetter_write_filters_dictionary(t_presetter *p) {
-    if (p->j_filters_filename == NULL || p->j_filters_filename == gensym(""))
-        return;
+    t_symbol *filename = NULL;
+
+    if (p->j_filters_filename == NULL || p->j_filters_filename == gensym("")) {
+        filename = gensym("filters.json");
+    } else {
+        filename = p->j_filters_filename;
+    }
 
     short path_id;
     char fname[MAX_PATH_CHARS];
 
-    if (!presetter_resolve_filter_path(p, p->j_filters_filename->s_name, &path_id, fname))
+    if (!presetter_resolve_filter_path(p, filename->s_name, &path_id, fname))
         return;
 
     dictionary_write(p->j_filters, fname, path_id);
