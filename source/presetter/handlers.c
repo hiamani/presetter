@@ -47,8 +47,11 @@ void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
         }
         break;
     case 2:
-        strncpy_zero(s, "Bang when operation completed", 512);
-        break;
+        switch (index) {
+        case 0:
+            strncpy_zero(s, "Bang when preset operation completed", 512);
+            break;
+        }
     }
 }
 
