@@ -268,5 +268,13 @@
         write to the file specified in the <i>filename</i> attribute.
       </description>
     </attribute>
+
+    <attribute name="defaulttab" get="1" set="1" type="number" size="1" >
+      <digest>Which tab to show by default</digest>
+      <description>
+        Choose which tab presetter should show by default. The default value is
+        "Presets".
+      </description>
+    </attribute>
   </attributelist>
 </c74object>

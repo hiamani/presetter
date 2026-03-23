@@ -78,6 +78,11 @@ void ext_main(void *r) {
     CLASS_ATTR_STYLE(c, "autowrite", 0, "onoff");
     CLASS_ATTR_SAVE(c, "autowrite", 0);
 
+    CLASS_ATTR_LONG(c, "defaulttab", 0, t_presetter, j_default_tab);
+    CLASS_ATTR_LABEL(c, "defaulttab", 0, "Default Tab");
+    CLASS_ATTR_ENUMINDEX(c, "defaulttab", 0, "Presets Filters");
+    CLASS_ATTR_SAVE(c, "defaulttab", 0);
+
     // Patching Rect
     CLASS_ATTR_DEFAULT(c, "patching_rect", 0, "0. 0. 289. 170.");
 
@@ -145,8 +150,11 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_filters = dict;
         p->j_applied_filters = hashtab_new(0);
 
-        p->j_selected_tab = gensym("presets");
-
+        if (p->j_default_tab == 0) {
+            p->j_selected_tab = gensym("presets");
+        } else {
+            p->j_selected_tab = gensym("filters");
+        }
         p->j_selected_filter_cell = -1;
         p->j_hovered_filter_cell = -1;
         p->j_last_hovered_filter_cell = -1;

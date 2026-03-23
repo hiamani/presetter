@@ -101,6 +101,7 @@ typedef struct _presetter {
     bool j_pagination_right_arrow_down;
 
     // Tabs
+    long j_default_tab;
     t_symbol *j_selected_tab;
 
     /** Filters **/
