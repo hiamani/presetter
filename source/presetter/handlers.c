@@ -37,6 +37,15 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
     return MAX_ERR_NONE;
 }
 
+t_max_err presetter_set_filename(t_presetter *p, t_object *attr, long argc, t_atom *argv) {
+    if (argc && argv) {
+        p->j_patcher_path = presetter_get_patcher_path(p);
+        p->j_filters_filename = atom_getsym(argv);
+        presetter_read_filters_dictionary(p);
+    }
+    return MAX_ERR_NONE;
+}
+
 void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
     switch (io) {
     case 1:

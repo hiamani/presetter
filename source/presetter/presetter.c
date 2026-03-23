@@ -70,6 +70,7 @@ void ext_main(void *r) {
     CLASS_ATTR_SAVE(c, "pattrstorage", 0);
 
     CLASS_ATTR_SYM(c, "filename", 0, t_presetter, j_filters_filename);
+    CLASS_ATTR_ACCESSORS(c, "filename", NULL, presetter_set_filename);
     CLASS_ATTR_LABEL(c, "filename", 0, "Filename");
     CLASS_ATTR_SAVE(c, "filename", 0);
 
@@ -145,9 +146,6 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_pagination_left_arrow_down = false;
         p->j_pagination_right_arrow_down = false;
 
-        p->j_patcher_path = presetter_get_patcher_path(p);
-        t_dictionary *dict = dictionary_new();
-        p->j_filters = dict;
         p->j_applied_filters = hashtab_new(0);
 
         if (p->j_default_tab == 0) {
@@ -175,8 +173,6 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         // Pagination
         p->j_filter_pagination_number = 1;
-
-        presetter_read_filters_dictionary(p);
 
         // Clear
         p->j_clear_filters_button_down = false;

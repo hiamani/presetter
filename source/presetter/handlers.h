@@ -7,6 +7,8 @@
 
 t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv);
 
+t_max_err presetter_set_filename(t_presetter *p, t_object *attr, long argc, t_atom *argv);
+
 void presetter_assist(t_presetter *x, void *b, long io, long index, char *s);
 
 /// Notify
