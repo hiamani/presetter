@@ -936,6 +936,7 @@ long presetter_key(t_presetter *p, t_object *patcherview, long keycode, long mod
             if (slot) {
                 snprintf_zero(p->j_preset_name, sizeof(p->j_preset_name), "%s", slot->s_name);
             }
+            presetter_clear_confirm(p);
             jbox_redraw((t_jbox *)p);
             return 1;
         }
