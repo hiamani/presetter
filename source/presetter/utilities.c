@@ -48,7 +48,7 @@ t_object *presetter_find_pattrstorage(t_presetter *p) {
     return NULL;
 }
 
-void presetter_connect_pattrstorage_(t_presetter *p) {
+void presetter_connect_pattrstorage_deferred(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
     t_object *patcher = NULL;
     object_obex_lookup(p, gensym("#P"), &patcher);
 
@@ -82,10 +82,6 @@ void presetter_connect_pattrstorage_(t_presetter *p) {
     object_method_typed(patcher, gensym("connect"), 4, msg, &rv);
 
     object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
-}
-
-void presetter_connect_pattrstorage_deferred(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
-    presetter_connect_pattrstorage_(p);
 }
 
 void presetter_connect_pattrstorage(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
