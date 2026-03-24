@@ -56,7 +56,7 @@ typedef struct _presetter {
     // Attributes
     t_symbol *j_pattrstorage_name;
     t_symbol *j_filters_filename;
-    t_symbol *j_filters_autowrite;
+    char j_filters_autowrite;
 
     // pattrstorage
     t_object *j_pattrstorage;
