@@ -462,13 +462,9 @@ void presetter_preset_grid_onclick_toggle_filter(t_presetter *p, long cell_idx) 
     bool exists_in_any = false;
 
     for (long i = 0; i < kc; i++) {
-        char *end;
-        long idx = strtol(kvs[i]->s_name, &end, 10);
-        if (*end != '\0') {
-            continue;
-        }
+        t_dictionary *dict = NULL;
+        dictionary_getdictionary(p->j_filters, kvs[i], (t_object **)&dict);
 
-        t_dictionary *dict = presetter_lookup_filter_slot(p, idx);
         if (!dict) {
             continue;
         }
