@@ -611,7 +611,7 @@ void presetter_filter_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
         p->j_selected_filter_cell = -1;
         p->j_editing_filter_name = false;
         p->j_filter_status = PRESETTER_NO_STATUS;
-        snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
+        p->j_filter_name[0] = '\0';
         return;
     }
 
@@ -813,7 +813,7 @@ void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modi
         } else {
             p->j_filter_pagination_number = p->j_filter_pagination_number + 1;
             p->j_selected_filter_cell = -1;
-            snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "\0");
+            p->j_filter_name[0] = '\0';
         }
         jbox_redraw((t_jbox *)p);
         return;
