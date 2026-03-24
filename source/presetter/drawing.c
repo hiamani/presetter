@@ -33,7 +33,7 @@ static void presetter_trim_text_right(t_jgraphics *g, const char *text, double m
             jgraphics_text_measure(g, with_ellipsis, &text_width, &text_height);
         }
 
-        snprintf_zero(out, outsize, "%s...", out);
+        snprintf_zero(out, outsize, "%s", with_ellipsis);
     } else {
         snprintf_zero(out, outsize, "%s", text);
     }
