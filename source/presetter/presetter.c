@@ -188,6 +188,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 void presetter_free(t_presetter *p) {
     object_free(p->j_slots);
     object_free(p->j_filters);
+    object_free(p->j_applied_filters);
     if (p->j_pattrstorage) {
         object_detach_byptr(p, p->j_pattrstorage);
     }

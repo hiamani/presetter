@@ -108,16 +108,21 @@ bool presetter_add_filter_sym(t_presetter *p, t_symbol *name, long index) {
     obj = dictionary_new();
 
     if (dictionary_appenddictionary(p->j_filters, key, (t_object *)obj) != MAX_ERR_NONE) {
+        object_free(obj);
         return false;
     }
 
     t_atomarray *arr = atomarray_new(0, NULL);
 
     if (dictionary_appendatomarray(obj, gensym("slots"), (t_object *)arr) != MAX_ERR_NONE) {
+        object_free(arr);
+        object_free(obj);
         return false;
     }
 
     if (dictionary_appendsym(obj, gensym("name"), name) != MAX_ERR_NONE) {
+        object_free(arr);
+        object_free(obj);
         return false;
     }
 
@@ -480,6 +485,9 @@ bool presetter_filtered_cell(t_presetter *p, long cell_idx) {
 
         t_atomarray *arr = NULL;
         dictionary_getatomarray(obj, gensym("slots"), (t_object **)&arr);
+
+        if (!arr)
+            continue;
 
         long ac = 0;
         t_atom *av = NULL;
