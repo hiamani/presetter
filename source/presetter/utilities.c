@@ -58,11 +58,7 @@ void presetter_connect_pattrstorage_(t_presetter *p) {
     t_object *ps = presetter_find_pattrstorage(p);
 
     if (!ps) {
-        if (p->j_pattrstorage_name && p->j_pattrstorage_name != gensym("")) {
-            object_error((t_object *)p, "Couldn't connect to pattrstorage %s", p->j_pattrstorage_name->s_name);
-        } else {
-            object_error((t_object *)p, "pattrstorage attribute not set");
-        }
+        object_error((t_object *)p, "Couldn't connect to pattrstorage %s", p->j_pattrstorage_name->s_name);
         return;
     }
 

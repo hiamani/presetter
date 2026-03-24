@@ -19,20 +19,20 @@
 // -----------------------------------------------------------------------------
 
 t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, t_atom *argv) {
-    if (argc && argv) {
-        p->j_pattrstorage_name = atom_getsym(argv);
-        p->j_pattrstorage = NULL;
-
-        t_object *ps = presetter_find_pattrstorage(p);
-        if (ps) {
-            p->j_pattrstorage = ps;
-            object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
-        } else {
-            return MAX_ERR_GENERIC;
-        }
-    } else {
+    if (!argc || !argv) {
         return MAX_ERR_GENERIC;
     }
+
+    t_symbol *name = atom_getsym(argv);
+
+    if (!name || name == gensym("")) {
+        return MAX_ERR_GENERIC;
+    }
+
+    p->j_pattrstorage_name = name;
+
+    // Reconnect via defer_low so patcher state is settled
+    presetter_connect_pattrstorage(p);
 
     return MAX_ERR_NONE;
 }

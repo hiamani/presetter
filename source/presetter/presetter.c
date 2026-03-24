@@ -1,11 +1,11 @@
 #include "ext_dictionary.h"
 #include "ext_obex.h"
 #include "ext_obex_util.h"
+#include "ext_post.h"
 #include "ext_proto.h"
 
 #include "handlers.h"
 #include "structs.h"
-#include "utilities.h"
 
 /// Lifecycle Declarations
 
@@ -184,9 +184,13 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         // Clear
         p->j_clear_filters_button_down = false;
 
-        jbox_ready(&p->j_box);
+        attr_dictionary_process(p, d);
 
-        presetter_connect_pattrstorage(p);
+        if (!p->j_pattrstorage_name || p->j_pattrstorage_name == gensym("")) {
+            object_error((t_object *)p, "pattrstorage attribute not set");
+        }
+
+        jbox_ready(&p->j_box);
     }
 
     return p;
