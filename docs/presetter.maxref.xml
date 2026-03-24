@@ -242,8 +242,11 @@
     <attribute name="pattrstorage" get="1" set="1" type="symbol" size="1" >
       <digest>Which pattrstorage object to bind to</digest>
       <description>
-        Use the varname of your pattrstorage object to allow presetter to
-        communicate with it.
+        <i>This attribute is required.</i> Use the varname of your pattrstorage
+        object to allow presetter to communicate with it. presetter must be in
+        the same patch as the pattrstorage object it's interacting with. When
+        presetter finds the specified pattrstorage object, it creates a
+        patchcord between the two objects to establish the connection.
       </description>
     </attribute>
 
