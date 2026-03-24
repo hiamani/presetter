@@ -2,6 +2,7 @@
 #include "ext_dictionary.h"
 #include "ext_hashtab.h"
 #include "ext_obex.h"
+#include "ext_post.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
 #include "ext_sysmem.h"
@@ -29,9 +30,12 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
         return MAX_ERR_GENERIC;
     }
 
-    p->j_pattrstorage_name = name;
+    if (p->j_pattrstorage) {
+        object_warn((t_object *)p, "pattrstorage already connected; delete me and create another presetter to change");
+        return MAX_ERR_GENERIC;
+    }
 
-    // Reconnect via defer_low so patcher state is settled
+    p->j_pattrstorage_name = name;
     presetter_connect_pattrstorage(p);
 
     return MAX_ERR_NONE;
