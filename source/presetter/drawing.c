@@ -534,7 +534,7 @@ void presetter_draw_filter_grid_row(
         jgraphics_fill(g);
 
         jgraphics_select_font_face(g, "Arial", JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD);
-        jgraphics_set_font_size(g, 10);
+        jgraphics_set_font_size(g, FILTER_CELL_FONT_SIZE);
 
         t_jgraphics_font_extents extents;
         jgraphics_font_extents(g, &extents);
