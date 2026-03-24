@@ -1,3 +1,4 @@
+#include "ext_dictionary.h"
 #include "ext_obex.h"
 #include "ext_obex_util.h"
 #include "ext_proto.h"
@@ -145,6 +146,12 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_preset_pagination_number = 1;
         p->j_pagination_left_arrow_down = false;
         p->j_pagination_right_arrow_down = false;
+
+        /* Filters */
+
+        if (!p->j_filters) {
+            p->j_filters = dictionary_new();
+        }
 
         p->j_applied_filters = hashtab_new(0);
 
