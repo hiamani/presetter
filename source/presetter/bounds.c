@@ -234,7 +234,14 @@ t_bounds presetter_get_pagination_number_bounds(t_presetter *p, t_rect *rect) {
     double text_height;
 
     char number_text[16];
-    snprintf_zero(number_text, sizeof(number_text), "%ld", p->j_preset_pagination_number);
+    long pagination_number;
+    if (p->j_selected_tab == gensym("presets")) {
+        pagination_number = p->j_preset_pagination_number;
+    } else {
+        pagination_number = p->j_filter_pagination_number;
+    }
+
+    snprintf_zero(number_text, sizeof(number_text), "%ld", pagination_number);
 
     jgraphics_select_font_face(
         p->offscreen, PAGINATION_NUMBER_FONT, JGRAPHICS_FONT_SLANT_NORMAL, JGRAPHICS_FONT_WEIGHT_BOLD
@@ -449,7 +456,7 @@ t_bounds presetter_get_filter_status_bounds(t_presetter *p, t_rect *rect) {
 }
 
 bool presetter_in_filter_status_bounds(t_presetter *p, t_rect *rect, t_pt *pt) {
-    t_bounds bounds = presetter_get_preset_status_bounds(p, rect);
+    t_bounds bounds = presetter_get_filter_status_bounds(p, rect);
     return presetter_generic_in_bounds(&bounds, pt);
 }
 
