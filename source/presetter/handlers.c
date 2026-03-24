@@ -129,9 +129,6 @@ void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 
         p->j_preset_status = PRESETTER_IDLE_STATUS;
 
-        t_atom a;
-        atom_setlong(&a, cell_idx);
-
         jbox_redraw((t_jbox *)p);
     }
     return;
