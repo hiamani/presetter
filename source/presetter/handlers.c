@@ -457,6 +457,9 @@ void presetter_preset_grid_onclick_toggle_filter(t_presetter *p, long cell_idx) 
 
     hashtab_getkeys(p->j_applied_filters, &kc, &kvs);
 
+    if (!kvs)
+        return;
+
     // Find if cell exists in any applied filters
 
     bool exists_in_any = false;
