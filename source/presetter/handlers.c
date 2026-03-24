@@ -628,7 +628,7 @@ void presetter_filter_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
     if (name) {
         snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", name->s_name);
     } else {
-        snprintf_zero(p->j_filter_name, sizeof(p->j_filter_name), "%s", "\0");
+        p->j_filter_name[0] = '\0';
     }
 
     snprintf_zero(
