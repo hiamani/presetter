@@ -31,7 +31,6 @@ bool presetter_find_filter_by_name(t_presetter *p, t_symbol *s, t_filter_result 
     t_symbol **keys = NULL;
 
     if (dictionary_getkeys(dict, &numkeys, &keys) != MAX_ERR_NONE) {
-        dictionary_freekeys(dict, numkeys, keys);
         return false;
     }
 
