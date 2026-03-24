@@ -158,9 +158,11 @@ void presetter_read_filters_dictionary(t_presetter *p) {
     if (!presetter_resolve_filter_path(p, p->j_filters_filename->s_name, &path_id, fname))
         return;
 
+    object_free(p->j_filters);
     p->j_filters = dictionary_new();
 
     if (dictionary_read(fname, path_id, &p->j_filters) != MAX_ERR_NONE) {
+        object_free(p->j_filters);
         p->j_filters = dictionary_new();
     }
 }
