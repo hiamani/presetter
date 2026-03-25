@@ -175,6 +175,8 @@ void presetter_write_filters_dictionary(t_presetter *p) {
         return;
 
     dictionary_write(p->j_filters, fname, path_id);
+
+    outlet_bang(p->j_outlet2);
 }
 
 void presetter_autowrite_filters_dictionary(t_presetter *p) {

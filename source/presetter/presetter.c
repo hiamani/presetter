@@ -111,6 +111,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_box.b_firstin = (t_object *)p;
 
         // Outlets
+        p->j_outlet2 = outlet_new((t_object *)p, NULL);
         p->j_outlet1 = outlet_new((t_object *)p, NULL);
 
         // Slots

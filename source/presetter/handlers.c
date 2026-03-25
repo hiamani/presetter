@@ -64,6 +64,9 @@ void presetter_assist(t_presetter *x, void *b, long io, long index, char *s) {
         case 0:
             strncpy_zero(s, "Bang when preset operation completed", 512);
             break;
+        case 1:
+            strncpy_zero(s, "Bang when filter file written", 512);
+            break;
         }
     }
 }

@@ -49,6 +49,7 @@ typedef struct _presetter {
 
     // Outlets
     void *j_outlet1;
+    void *j_outlet2;
 
     // Patcher
     short j_patcher_path;
