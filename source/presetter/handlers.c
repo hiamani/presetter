@@ -559,13 +559,24 @@ void presetter_preset_grid_onclick(t_presetter *p, t_rect *rect, t_pt *pt, long 
         if (filters_applied) {
             presetter_preset_grid_onclick_toggle_filter(p, cell_idx);
         } else {
+            t_symbol *slot = presetter_lookup_preset_slot(p, cell_idx);
+
             p->j_editing_preset_name = false;
             p->j_confirm_preset_store = true;
             p->j_confirm_preset_cell = cell_idx;
             p->j_preset_status_override = PRESETTER_CONFIRM_STATUS;
-            snprintf_zero(
-                p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Store Preset %ld?", cell_idx
-            );
+
+            if (slot) {
+                snprintf_zero(
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Overwrite Preset %ld?",
+                    cell_idx
+                );
+            } else {
+                snprintf_zero(
+                    p->j_confirm_preset_status_text, sizeof(p->j_confirm_preset_status_text), "Store Preset %ld?",
+                    cell_idx
+                );
+            }
         }
         jbox_redraw((t_jbox *)p);
         return;
