@@ -15,9 +15,9 @@ void presetter_connect_pattrstorage(t_presetter *p);
 
 bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *out_path, char *out_name);
 
-void presetter_read_filters_dictionary(t_presetter *p);
+bool presetter_read_filters_dictionary(t_presetter *p);
 
-void presetter_write_filters_dictionary(t_presetter *p);
+bool presetter_write_filters_dictionary(t_presetter *p);
 
 void presetter_autowrite_filters_dictionary(t_presetter *p);
 

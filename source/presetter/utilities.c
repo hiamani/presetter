@@ -7,6 +7,7 @@
 
 // Local Includes
 #include "structs.h"
+#include <string.h>
 
 t_symbol *presetter_long_to_sym(long i) {
     char key[24];
@@ -140,43 +141,53 @@ bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *
 
 /* Read / Write Filters */
 
-void presetter_read_filters_dictionary(t_presetter *p) {
-    if (p->j_filters_filename == NULL || p->j_filters_filename == gensym(""))
-        return;
+bool presetter_read_filters_dictionary(t_presetter *p) {
+    // Try to resolve if we have a filename attribute but no resolved path
+    if ((!p->j_filters_file_path || !p->j_filters_resolved_filename || p->j_filters_resolved_filename == gensym("")) &&
+        p->j_filters_filename && p->j_filters_filename != gensym("")) {
 
-    short path_id;
-    char fname[MAX_PATH_CHARS];
+        short path_id = presetter_get_patcher_path(p);
+        if (path_id != 0) {
+            p->j_filters_file_path = path_id;
+            p->j_filters_resolved_filename = p->j_filters_filename;
+        }
+    }
 
-    if (!presetter_resolve_filter_path(p, p->j_filters_filename->s_name, &path_id, fname))
-        return;
+    if (!p->j_filters_file_path || !p->j_filters_resolved_filename || p->j_filters_resolved_filename == gensym(""))
+        return false;
 
     object_free(p->j_filters);
     p->j_filters = dictionary_new();
 
-    if (dictionary_read(fname, path_id, &p->j_filters) != MAX_ERR_NONE) {
+    if (dictionary_read(p->j_filters_resolved_filename->s_name, p->j_filters_file_path, &p->j_filters) !=
+        MAX_ERR_NONE) {
         object_free(p->j_filters);
         p->j_filters = dictionary_new();
+        return false;
     }
+
+    return true;
 }
 
-void presetter_write_filters_dictionary(t_presetter *p) {
-    t_symbol *filename = NULL;
+bool presetter_write_filters_dictionary(t_presetter *p) {
+    if ((!p->j_filters_file_path || !p->j_filters_resolved_filename || p->j_filters_resolved_filename == gensym("")) &&
+        p->j_filters_filename && p->j_filters_filename != gensym("")) {
 
-    if (p->j_filters_filename == NULL || p->j_filters_filename == gensym("")) {
-        filename = gensym("filters.json");
-    } else {
-        filename = p->j_filters_filename;
+        short path_id = presetter_get_patcher_path(p);
+        if (path_id != 0) {
+            p->j_filters_file_path = path_id;
+            p->j_filters_resolved_filename = p->j_filters_filename;
+        }
     }
 
-    short path_id;
-    char fname[MAX_PATH_CHARS];
+    if (!p->j_filters_file_path || !p->j_filters_resolved_filename || p->j_filters_resolved_filename == gensym(""))
+        return false;
 
-    if (!presetter_resolve_filter_path(p, filename->s_name, &path_id, fname))
-        return;
-
-    dictionary_write(p->j_filters, fname, path_id);
+    if (dictionary_write(p->j_filters, p->j_filters_resolved_filename->s_name, p->j_filters_file_path) != MAX_ERR_NONE)
+        return false;
 
     outlet_bang(p->j_outlet2);
+    return true;
 }
 
 void presetter_autowrite_filters_dictionary(t_presetter *p) {

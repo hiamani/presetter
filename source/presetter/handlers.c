@@ -2,6 +2,7 @@
 #include "ext_dictionary.h"
 #include "ext_hashtab.h"
 #include "ext_obex.h"
+#include "ext_path.h"
 #include "ext_post.h"
 #include "ext_proto.h"
 #include "ext_strings.h"
@@ -42,11 +43,36 @@ t_max_err presetter_set_pattrstorage(t_presetter *p, t_object *attr, long argc, 
 }
 
 t_max_err presetter_set_filename(t_presetter *p, t_object *attr, long argc, t_atom *argv) {
-    if (argc && argv) {
-        p->j_patcher_path = presetter_get_patcher_path(p);
-        p->j_filters_filename = atom_getsym(argv);
-        presetter_read_filters_dictionary(p);
+    if (!argc || !argv)
+        return MAX_ERR_NONE;
+
+    t_symbol *name = atom_getsym(argv);
+    if (!name || name == gensym("")) {
+        p->j_filters_filename = gensym("");
+        p->j_filters_file_path = 0;
+        p->j_filters_resolved_filename = gensym("");
+        return MAX_ERR_NONE;
     }
+
+    p->j_filters_filename = name;
+
+    short path_id = 0;
+    char fname[MAX_PATH_CHARS];
+    strncpy_zero(fname, name->s_name, MAX_PATH_CHARS);
+    path_frompathname(fname, &path_id, fname);
+
+    if (path_id == 0) {
+        path_id = presetter_get_patcher_path(p);
+        strncpy_zero(fname, name->s_name, MAX_PATH_CHARS);
+    }
+
+    if (path_id == 0)
+        return MAX_ERR_NONE;
+
+    p->j_filters_file_path = path_id;
+    p->j_filters_resolved_filename = gensym(fname);
+    presetter_read_filters_dictionary(p);
+
     return MAX_ERR_NONE;
 }
 
@@ -293,12 +319,96 @@ void presetter_resetfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv
 }
 
 void presetter_readfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
-    presetter_read_filters_dictionary(p);
+    short path_id = 0;
+    char fname[MAX_PATH_CHARS];
+
+    if (argc > 0 && atom_gettype(argv) == A_SYM) {
+        strncpy_zero(fname, atom_getsym(argv)->s_name, MAX_PATH_CHARS);
+        t_fourcc outtype;
+        t_fourcc filetype = 'JSON';
+        if (locatefile_extended(fname, &path_id, &outtype, &filetype, 1))
+            return;
+    }
+
+    if (path_id == 0) {
+        t_fourcc outtype, filetype = 'JSON';
+        if (open_dialog(fname, &path_id, &outtype, &filetype, 1))
+            return;
+    }
+
+    p->j_filters_file_path = path_id;
+    p->j_filters_resolved_filename = gensym(fname);
+
+    if (!presetter_read_filters_dictionary(p)) {
+        object_error((t_object *)p, "Could not read filters file: %s", fname);
+        p->j_filters_file_path = 0;
+        p->j_filters_resolved_filename = gensym("");
+        return;
+    }
     jbox_redraw((t_jbox *)p);
 }
 
 void presetter_writefilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
-    presetter_write_filters_dictionary(p);
+    short path_id = 0;
+    char fname[MAX_PATH_CHARS];
+
+    if (argc > 0 && atom_gettype(argv) == A_SYM) {
+        strncpy_zero(fname, atom_getsym(argv)->s_name, MAX_PATH_CHARS);
+        path_frompathname(fname, &path_id, fname);
+
+        if (path_id == 0) {
+            path_id = presetter_get_patcher_path(p);
+            strncpy_zero(fname, atom_getsym(argv)->s_name, MAX_PATH_CHARS);
+        }
+    } else {
+        strncpy_zero(fname, "filters.json", MAX_PATH_CHARS);
+        if (saveasdialog_extended(fname, &path_id, NULL, NULL, 0))
+            return;
+    }
+
+    if (path_id == 0) {
+        object_error((t_object *)p, "Could not resolve path; patcher not saved?");
+        return;
+    }
+
+    p->j_filters_file_path = path_id;
+    p->j_filters_resolved_filename = gensym(fname);
+
+    if (!presetter_write_filters_dictionary(p)) {
+        object_error((t_object *)p, "Could not write filters file: %s", fname);
+    }
+}
+
+void presetter_readfiltersagain(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    // Always defer to the @filename attr if it's set, so read/writefiltersagain
+    // won't use the filter name and path last chosen from a dialog or otherwise
+    if (p->j_filters_filename && p->j_filters_filename != gensym("")) {
+        short path_id = presetter_get_patcher_path(p);
+        if (path_id != 0) {
+            p->j_filters_file_path = path_id;
+            p->j_filters_resolved_filename = p->j_filters_filename;
+        }
+    }
+
+    if (!presetter_read_filters_dictionary(p)) {
+        object_error((t_object *)p, "Could not read filters file");
+        return;
+    }
+    jbox_redraw((t_jbox *)p);
+}
+
+void presetter_writefiltersagain(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    if (p->j_filters_filename && p->j_filters_filename != gensym("")) {
+        short path_id = presetter_get_patcher_path(p);
+        if (path_id != 0) {
+            p->j_filters_file_path = path_id;
+            p->j_filters_resolved_filename = p->j_filters_filename;
+        }
+    }
+
+    if (!presetter_write_filters_dictionary(p)) {
+        object_error((t_object *)p, "Could not write filters file");
+    }
 }
 
 // Pass through unknown messages silently

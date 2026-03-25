@@ -110,6 +110,10 @@ typedef struct _presetter {
     t_dictionary *j_filters;
     t_hashtab *j_applied_filters;
 
+    // File path
+    short j_filters_file_path;
+    t_symbol *j_filters_resolved_filename;
+
     // Filter Name
     bool j_editing_filter_name;
     char j_filter_name[512];

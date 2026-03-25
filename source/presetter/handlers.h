@@ -49,7 +49,11 @@ void presetter_resetfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv
 
 void presetter_readfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
+void presetter_readfiltersagain(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
 void presetter_writefilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
+
+void presetter_writefiltersagain(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 /// Catchall
 

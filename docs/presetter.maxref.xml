@@ -214,26 +214,60 @@
 
     <method name="readfilters">
       <arglist>
+        <arg name="file-name" optional="1" type="symbol" />
       </arglist>
       <digest>
         Read filters from a file
       </digest>
       <description>
-        The word <i>readfilters</i> reads the filter file specified by the
-        <i>filename</i> attribute.
+        The word <i>readfilters</i> followed by a symbol tries to read a
+        filters JSON file in the Max search path or an absolute file path.
+
+        If no argument is defined, a dialog opens to choose a file to read.
       </description>
     </method>
 
     <method name="writefilters">
+      <arglist>
+        <arg name="file-name" optional="1" type="symbol" />
+      </arglist>
+      <digest>
+        Write filters to a file
+      </digest>
+      <description>
+        The word <i>writefilters</i> followed by a symbol tries to write to a
+        filters JSON file in the Max search path or an absolute file path.
+
+        If no argument is defined, a dialog opens to choose a file to write.
+      </description>
+    </method>
+
+    <method name="readfiltersagain">
+      <arglist>
+      </arglist>
+      <digest>
+        Read filters from a file
+      </digest>
+      <description>
+        The word <i>readfiltersagain</i> reads the last read or written file
+        name after using the <i>readfilters</i> or <i>writefilters</i> commands;
+        however if the <i>filename</i> attribute is set, <i>readfiltersagain</i>
+        will read from the file specified by <i>filename</i>.
+      </description>
+    </method>
+
+    <method name="writefiltersagain">
       <arglist>
       </arglist>
       <digest>
         Write filters to a file
       </digest>
       <description>
-        The word <i>writefilters</i> writes filters to the file specified by the
-        <i>filename</i> attribute. If no filename is attribute is empty, the
-        default file <b>filters.json</b> will be written.
+        The word <i>writefiltersagain</i> writes to the last read or written
+        file name after using the <i>readfilters</i> or <i>writefilters</i>
+        commands; however if the <i>filename</i> attribute is set,
+        <i>writefiltersagain</i> will write to the file specified by
+        <i>filename</i>.
       </description>
     </method>
   </methodlist>
@@ -254,7 +288,7 @@
       <digest>Filename to read and write filters</digest>
       <description>
         Specify a filename to read and write filters, which will be used in the
-        <i>readfilters</i> and <i>writefilters</i> messages. If the
+        <i>readfiltersagain</i> and <i>writefiltersagain</i> messages. If the
         <i>autofilter</i> attribute is set, all filter operations write to this
         filename after they're completed.
 

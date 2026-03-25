@@ -51,7 +51,9 @@ void ext_main(void *r) {
     class_addmethod(c, (method)presetter_resetfilters, "resetfilters", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_readfilters, "readfilters", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_readfiltersagain, "readfiltersagain", A_GIMME, 0);
     class_addmethod(c, (method)presetter_writefilters, "writefilters", A_GIMME, 0);
+    class_addmethod(c, (method)presetter_writefiltersagain, "writefiltersagain", A_GIMME, 0);
 
     class_addmethod(c, (method)presetter_anything, "anything", A_GIMME, 0);
 
