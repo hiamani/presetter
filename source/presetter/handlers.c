@@ -173,7 +173,7 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
         return;
 
     if (atom_gettype(argv) == A_LONG && atom_getlong(argv) == 0) {
-        hashtab_clear(p->j_slots);
+        hashtab_clear(p->j_presets);
         return;
     }
 
@@ -201,7 +201,7 @@ void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     if (name == gensym("(undefined)"))
         return;
 
-    hashtab_store(p->j_slots, presetter_long_to_sym(index), (t_object *)name);
+    hashtab_store(p->j_presets, presetter_long_to_sym(index), (t_object *)name);
 }
 
 /* Filters */
@@ -782,7 +782,7 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
         }
 
         if (presetter_in_write_button_bounds(p, &rect, &pt) && p->j_editing_preset_name) {
-            p->j_write_button_down = true;
+            p->j_preset_write_button_down = true;
             jbox_redraw((t_jbox *)p);
             return;
         }
@@ -891,9 +891,9 @@ void presetter_mousedown(t_presetter *p, t_object *patcherview, t_pt pt, long mo
 /* Mouseup */
 
 void presetter_mouseup(t_presetter *p, t_object *patcherview, t_pt pt, long modifiers) {
-    if (p->j_write_button_down) {
+    if (p->j_preset_write_button_down) {
         presetter_handle_preset_rename(p);
-        p->j_write_button_down = false;
+        p->j_preset_write_button_down = false;
         jbox_redraw((t_jbox *)p);
         return;
     }

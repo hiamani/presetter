@@ -13,8 +13,6 @@ t_object *presetter_find_pattrstorage(t_presetter *p);
 
 void presetter_connect_pattrstorage(t_presetter *p);
 
-bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *out_path, char *out_name);
-
 bool presetter_read_filters_dictionary(t_presetter *p);
 
 bool presetter_write_filters_dictionary(t_presetter *p);

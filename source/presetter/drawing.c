@@ -196,7 +196,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
     t_jrgba bg_color;
     t_jrgba text_color;
 
-    if (p->j_write_button_down) {
+    if (p->j_preset_write_button_down) {
         presetter_resolve_color(WRITE_BUTTON_ON_BG_COLOR, &bg_color, 1);
         presetter_resolve_color(WRITE_BUTTON_ON_TEXT_COLOR, &text_color, 1);
     } else if (p->j_editing_preset_name) {
@@ -207,7 +207,7 @@ void presetter_draw_write_button(t_presetter *p, t_jgraphics *g, t_rect *rect) {
         presetter_resolve_color(WRITE_BUTTON_INACTIVE_TEXT_COLOR, &text_color, 1);
     }
 
-    presetter_draw_button(g, &bounds, WRITE_BUTTON_TEXT, p->j_write_button_down, &bg_color, &text_color);
+    presetter_draw_button(g, &bounds, WRITE_BUTTON_TEXT, p->j_preset_write_button_down, &bg_color, &text_color);
 }
 
 /* Grid */

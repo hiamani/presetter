@@ -51,9 +51,6 @@ typedef struct _presetter {
     void *j_outlet1;
     void *j_outlet2;
 
-    // Patcher
-    short j_patcher_path;
-
     // Attributes
     t_symbol *j_pattrstorage_name;
     t_symbol *j_filters_filename;
@@ -62,27 +59,38 @@ typedef struct _presetter {
     // pattrstorage
     t_object *j_pattrstorage;
 
-    // Slots
-    t_hashtab *j_slots;
-
     // jgraphics
     t_jsurface *surface;
     t_jgraphics *offscreen;
 
+    /* UI */
+
+    // Pagination
+    bool j_pagination_left_arrow_down;
+    bool j_pagination_right_arrow_down;
+
+    // Tabs
+    long j_default_tab;
+    t_symbol *j_selected_tab;
+
+    /* Presets */
+
+    t_hashtab *j_presets;
+
     // Cells
+    long j_selected_preset_cell;
     long j_hovered_preset_cell;
     long j_last_hovered_preset_cell;
-    long j_selected_preset_cell;
+    double j_interp_preset_cell;
 
     // Preset Name
     bool j_editing_preset_name;
     char j_preset_name[512];
 
     // Write Button
-    char *j_write_button_text;
-    bool j_write_button_down;
+    bool j_preset_write_button_down;
 
-    // Status line
+    // Status
     t_status j_preset_status;
     t_status j_preset_status_override;
     char j_preset_idle_status_text[512];
@@ -98,14 +106,8 @@ typedef struct _presetter {
 
     // Pagination
     long j_preset_pagination_number;
-    bool j_pagination_left_arrow_down;
-    bool j_pagination_right_arrow_down;
 
-    // Tabs
-    long j_default_tab;
-    t_symbol *j_selected_tab;
-
-    /** Filters **/
+    /* Filters */
 
     t_dictionary *j_filters;
     t_hashtab *j_applied_filters;
@@ -114,18 +116,17 @@ typedef struct _presetter {
     short j_filters_file_path;
     t_symbol *j_filters_resolved_filename;
 
+    // Cells
+    long j_hovered_filter_cell;
+    long j_last_hovered_filter_cell;
+    long j_selected_filter_cell;
+
     // Filter Name
     bool j_editing_filter_name;
     char j_filter_name[512];
 
     // Write Button
-    char *j_write_filter_button_text;
     bool j_write_filter_button_down;
-
-    // Cells
-    long j_hovered_filter_cell;
-    long j_last_hovered_filter_cell;
-    long j_selected_filter_cell;
 
     // Status
     t_status j_filter_status;

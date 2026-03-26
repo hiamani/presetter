@@ -120,25 +120,6 @@ short presetter_get_patcher_path(t_presetter *p) {
     return patch_pathid;
 }
 
-bool presetter_resolve_filter_path(t_presetter *p, const char *filename, short *out_path, char *out_name) {
-    if (p->j_patcher_path == 0)
-        return false;
-
-    short path_id = 0;
-    char fname[MAX_PATH_CHARS];
-    path_frompathname(filename, &path_id, fname);
-
-    if (path_id != 0) {
-        *out_path = path_id;
-        strncpy_zero(out_name, fname, MAX_PATH_CHARS);
-    } else {
-        *out_path = p->j_patcher_path;
-        strncpy_zero(out_name, filename, MAX_PATH_CHARS);
-    }
-
-    return true;
-}
-
 /* Read / Write Filters */
 
 bool presetter_read_filters_dictionary(t_presetter *p) {

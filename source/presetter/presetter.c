@@ -105,9 +105,9 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
     p = (t_presetter *)object_alloc(s_presetter_class);
 
     if (p) {
+        // Base
         long flags = 0 | JBOX_DRAWFIRSTIN | JBOX_GROWBOTH | JBOX_NODRAWBOX | JBOX_HILITE;
         jbox_new(&p->j_box, flags, argc, argv);
-        attr_dictionary_process(p, d);
 
         // Inlets
         p->j_box.b_firstin = (t_object *)p;
@@ -116,29 +116,62 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_outlet2 = outlet_new((t_object *)p, NULL);
         p->j_outlet1 = outlet_new((t_object *)p, NULL);
 
-        // Slots
-        p->j_slots = hashtab_new(0);
+        // Attributes
+        p->j_pattrstorage_name = gensym("");
+        p->j_filters_filename = gensym("");
+        p->j_filters_autowrite = 0;
+
+        attr_dictionary_process(p, d);
+
+        if (!p->j_pattrstorage_name || p->j_pattrstorage_name == gensym("")) {
+            object_error((t_object *)p, "pattrstorage attribute not set");
+        }
+
+        // pattrstorage
+        p->j_pattrstorage = NULL;
 
         // jgraphics
         p->surface = jgraphics_image_surface_create(JGRAPHICS_FORMAT_A8, 1, 1);
         p->offscreen = jgraphics_create(p->surface);
 
-        // Grid
+        /* UI */
+
+        // Pagination
+        p->j_pagination_left_arrow_down = false;
+        p->j_pagination_right_arrow_down = false;
+
+        // Tabs
+        if (p->j_default_tab == 0) {
+            p->j_selected_tab = gensym("presets");
+        } else {
+            p->j_selected_tab = gensym("filters");
+        }
+
+        /* Presets */
+
+        p->j_presets = hashtab_new(0);
+
+        // Cells
         p->j_selected_preset_cell = -1;
         p->j_hovered_preset_cell = -1;
         p->j_last_hovered_preset_cell = -2;
+        p->j_interp_preset_cell = -1;
 
         // Preset Name
         p->j_editing_preset_name = false;
+        p->j_preset_name[0] = '\0';
 
         // Write Button
-        p->j_write_button_down = false;
+        p->j_preset_write_button_down = false;
 
         // Status
         p->j_preset_status = PRESETTER_NO_STATUS;
         p->j_preset_status_override = PRESETTER_NO_STATUS;
+        p->j_preset_idle_status_text[0] = '\0';
+        p->j_preset_hover_status_text[0] = '\0';
+        p->j_confirm_preset_status_text[0] = '\0';
 
-        // Preset Confirm
+        // Confirm
         p->j_confirm_preset_cell = -1;
         p->j_confirm_preset_store = false;
         p->j_confirm_preset_delete = false;
@@ -147,8 +180,6 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         // Pagination
         p->j_preset_pagination_number = 1;
-        p->j_pagination_left_arrow_down = false;
-        p->j_pagination_right_arrow_down = false;
 
         /* Filters */
 
@@ -158,22 +189,26 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 
         p->j_applied_filters = hashtab_new(0);
 
-        if (p->j_default_tab == 0) {
-            p->j_selected_tab = gensym("presets");
-        } else {
-            p->j_selected_tab = gensym("filters");
-        }
+        // File path
+
+        // Cells
         p->j_selected_filter_cell = -1;
         p->j_hovered_filter_cell = -1;
         p->j_last_hovered_filter_cell = -1;
 
+        // Filter name
+        p->j_editing_filter_name = false;
+        p->j_filter_name[0] = '\0';
+
+        // Write Button
+        p->j_write_filter_button_down = false;
+
         // Status
         p->j_filter_status = PRESETTER_NO_STATUS;
         p->j_filter_status_override = PRESETTER_NO_STATUS;
-
-        // Filter name
-        p->j_editing_filter_name = false;
-        p->j_write_filter_button_down = false;
+        p->j_filter_idle_status_text[0] = '\0';
+        p->j_filter_hover_status_text[0] = '\0';
+        p->j_confirm_filter_status_text[0] = '\0';
 
         // Filter Confirm
         p->j_confirm_filter_cell = -1;
@@ -185,13 +220,8 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
         p->j_filter_pagination_number = 1;
 
         // Clear
+        p->j_clear_filters_button_text[0] = '\0';
         p->j_clear_filters_button_down = false;
-
-        attr_dictionary_process(p, d);
-
-        if (!p->j_pattrstorage_name || p->j_pattrstorage_name == gensym("")) {
-            object_error((t_object *)p, "pattrstorage attribute not set");
-        }
 
         jbox_ready(&p->j_box);
     }
@@ -200,7 +230,7 @@ t_presetter *presetter_new(t_symbol *s, short argc, t_atom *argv) {
 }
 
 void presetter_free(t_presetter *p) {
-    object_free(p->j_slots);
+    object_free(p->j_presets);
     object_free(p->j_filters);
     object_free(p->j_applied_filters);
     if (p->j_pattrstorage) {
