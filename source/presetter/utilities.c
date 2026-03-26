@@ -85,7 +85,7 @@ void presetter_connect_pattrstorage_deferred(t_presetter *p, t_symbol *s, short 
     object_method_typed(ps, gensym("getslotnamelist"), 0, NULL, NULL);
 }
 
-void presetter_connect_pattrstorage(t_presetter *p, t_symbol *s, short argc, t_atom *argv) {
+void presetter_connect_pattrstorage(t_presetter *p) {
     defer_low((t_object *)p, (method)presetter_connect_pattrstorage_deferred, NULL, 0, NULL);
 }
 

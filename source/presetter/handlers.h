@@ -61,13 +61,15 @@ void presetter_anything(t_presetter *p, t_symbol *s, long argc, t_atom *argv);
 
 /// Callback Methods
 
-void presetter_handle_recall(t_presetter *p, long cell_idx);
+void presetter_handle_preset_recall(t_presetter *p, long cell_idx);
 
-void presetter_handle_store(t_presetter *p, long cell_idx);
+void presetter_handle_preset_store(t_presetter *p, long cell_idx);
 
-void presetter_handle_delete(t_presetter *p, long cell_idx);
+void presetter_handle_preset_delete(t_presetter *p, long cell_idx);
 
 void presetter_handle_preset_rename(t_presetter *p);
+
+void presetter_handle_filter_rename(t_presetter *p);
 
 /// Pointer Event Methods
 

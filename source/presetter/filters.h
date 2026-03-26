@@ -49,6 +49,5 @@ void presetter_reset_filter_all(t_presetter *p);
 
 bool presetter_filtered_cell(t_presetter *p, long cell_idx);
 
-void presetter_handle_filter_rename(t_presetter *p);
 
 #endif
