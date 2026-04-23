@@ -19,6 +19,7 @@ git clone git@github.com:hiamani/presetter.git --recursive
 Then build:
 
 ```sh
+mkdir build
 cd build
 cmake ..
 cmake --build .
