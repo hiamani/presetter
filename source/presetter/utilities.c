@@ -7,7 +7,19 @@
 
 // Local Includes
 #include "structs.h"
+#include <math.h>
 #include <string.h>
+
+/* General */
+
+bool presetter_double_is_whole(double d) {
+    const double epsilon = 1e-9;
+    if (!isfinite(d))
+        return false;
+    return fabs(d - trunc(d)) < epsilon;
+}
+
+/* Type conversion */
 
 t_symbol *presetter_long_to_sym(long i) {
     char key[24];

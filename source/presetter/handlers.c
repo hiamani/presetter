@@ -144,12 +144,7 @@ void presetter_read(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
     }
 }
 
-void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
-    long inlet = proxy_getinlet((t_object *)p);
-    if (inlet != 0 || argc != 1 || atom_gettype(argv) != A_LONG)
-        return;
-
-    long cell_idx = atom_getlong(argv);
+void presetter_recall_cell(t_presetter *p, long cell_idx) {
     t_symbol *slot = presetter_lookup_preset_slot(p, cell_idx);
 
     if (slot) {
@@ -164,7 +159,24 @@ void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
 
         jbox_redraw((t_jbox *)p);
     }
-    return;
+}
+
+void presetter_recall(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
+    long inlet = proxy_getinlet((t_object *)p);
+    if (inlet != 0 || argc != 1)
+        return;
+
+    if (atom_gettype(argv) == A_LONG) {
+        long cell_idx = atom_getlong(argv);
+        presetter_recall_cell(p, cell_idx);
+
+        return;
+    } else if (atom_gettype(argv) == A_FLOAT) {
+        double cell_idx = atom_getfloat(argv);
+        if (presetter_double_is_whole(cell_idx)) {
+            presetter_recall_cell(p, (long)cell_idx);
+        }
+    }
 }
 
 void presetter_slotname(t_presetter *p, t_symbol *s, long argc, t_atom *argv) {
@@ -324,8 +336,7 @@ void presetter_readfilters(t_presetter *p, t_symbol *s, long argc, t_atom *argv)
 
     if (argc > 0 && atom_gettype(argv) == A_SYM) {
         strncpy_zero(fname, atom_getsym(argv)->s_name, MAX_PATH_CHARS);
-        t_fourcc outtype;
-        t_fourcc filetype = 'JSON';
+        t_fourcc outtype, filetype = 'JSON';
         if (locatefile_extended(fname, &path_id, &outtype, &filetype, 1))
             return;
     }

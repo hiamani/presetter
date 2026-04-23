@@ -2,6 +2,7 @@
 #define PRESETTER_UTILITIES
 
 #include "structs.h"
+bool presetter_double_is_whole(double d);
 
 t_symbol *presetter_long_to_sym(long i);
 
